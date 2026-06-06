@@ -1,0 +1,764 @@
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#14110f;--panel:#1d1916;--panel2:#241f1b;--line:#332c26;
+    --ink:#f1ebe3;--mute:#9a8e80;--faint:#6b6258;
+    --affirm:#a98bc0;--ccplan:#6aa9a0;--recur:#7fa0c4;--card:#d77866;--income:#76b384;--gold:#e0a64e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;
+    background-image:radial-gradient(circle at 18% -10%, #2a221c 0%, transparent 48%);min-height:100vh}
+  .wrap{max-width:1120px;margin:0 auto;padding:26px 20px 90px}
+  .mono{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:22px}
+  h1{font-family:ui-serif,'New York',Georgia,'Times New Roman',serif;font-weight:900;font-size:28px;margin:0;letter-spacing:-.5px}
+  h1 span{color:var(--gold)}
+  .sub{color:var(--mute);font-size:12.5px;margin-top:3px}
+  .navmonth{display:flex;align-items:center;gap:10px}
+  .navmonth .mlabel{font-family:ui-serif,'New York',Georgia,'Times New Roman',serif;font-size:20px;min-width:150px;text-align:center}
+  .navmonth .mlabel small{display:block;font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);margin-top:1px}
+  .navmonth .future{color:var(--gold)}.navmonth .past{color:var(--mute)}
+  .income-box{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mute)}
+  .income-box input{width:110px}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;font-size:13px;outline:none}
+  input:focus,select:focus{border-color:var(--gold)}
+  .nbtn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:15px}
+  .nbtn:hover{border-color:var(--gold)}
+  .today-btn{background:none;border:1px solid var(--line);color:var(--mute);border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer}
+  .today-btn:hover{color:var(--ink)}
+  .saved{font-size:11px;color:var(--income);opacity:0;transition:opacity .3s}.saved.show{opacity:1}
+
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px}
+  .card .lab{font-size:10.5px;text-transform:uppercase;letter-spacing:1.1px;color:var(--faint)}
+  .card .big{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:23px;font-weight:600;margin-top:7px;letter-spacing:-1px}
+  .card .note{font-size:11px;color:var(--mute);margin-top:4px}
+  .card.accent .big{color:var(--gold)}
+  .card.left .big{color:var(--income)} .card.left.neg .big{color:var(--card)}
+
+  .charts{display:grid;grid-template-columns:1.55fr .95fr;gap:16px;margin-bottom:14px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .panel h2{font-family:ui-serif,'New York',Georgia,'Times New Roman',serif;font-size:17px;margin:0 0 4px;font-weight:600}
+  .panel .ph{color:var(--mute);font-size:12px;margin:0 0 12px}
+  .insight{font-size:12.5px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--income);border-radius:8px;padding:10px 12px;margin-top:12px;line-height:1.5}
+  .chartlegend{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--mute);margin-top:10px}
+  .chartlegend span{display:inline-flex;align-items:center;gap:6px}
+  .chartlegend .pd{width:9px;height:9px;border-radius:3px}
+  .donutwrap{display:flex;align-items:center;gap:16px}
+  .legend{font-size:12px;color:var(--mute);display:flex;flex-direction:column;gap:8px;flex:1}
+  .legend .li{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .legend .nm{display:flex;align-items:center;gap:7px;color:var(--ink)}
+  .legend .pd{width:9px;height:9px;border-radius:3px}
+  .legend .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;color:var(--mute)}
+
+  @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}}
+
+  .section{margin-top:16px}
+  .sechead{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+  .sechead .tt{display:flex;align-items:center;gap:9px;font-family:ui-serif,'New York',Georgia,'Times New Roman',serif;font-size:18px}
+  .sechead .tt .pd{width:11px;height:11px;border-radius:4px}
+  .sechead .sectot{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;color:var(--mute);font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);padding:7px 9px;border-bottom:1px solid var(--line);font-weight:600}
+  td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:middle}
+  td.amt,th.amt{text-align:right;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace}
+  tr.done{opacity:.38}
+  tr.pending td:first-child .nmtxt::after{content:' • upcoming';color:var(--gold);font-size:10px;letter-spacing:.5px}
+  .tag{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:10px;padding:1px 6px;border-radius:20px;border:1px solid var(--line);color:var(--mute);margin-left:6px}
+  .tag.var{color:var(--gold);border-color:rgba(224,166,78,.4)}
+  .leftpill{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:11px;color:var(--mute)}
+  .estmark{color:var(--faint);font-size:10px;font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif}
+  .icon-btn{background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;padding:3px 5px;border-radius:6px}
+  .icon-btn:hover{color:var(--ink);background:var(--panel2)}
+  .editcell input,.editcell select{width:100%;padding:5px 7px;font-size:12.5px}
+  .addrow{display:grid;gap:8px;align-items:center;background:var(--panel2);padding:11px;border-radius:10px;margin-top:10px;border:1px dashed var(--line)}
+  .btn{background:var(--gold);color:#1a1410;border:none;border-radius:8px;padding:8px 13px;font-weight:600;font-size:12.5px;cursor:pointer;font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.sm{background:none;border:1px solid var(--line);color:var(--mute);font-weight:500}
+  .btn.sm:hover{color:var(--ink);border-color:var(--mute)}
+  .empty{color:var(--faint);font-size:12.5px;padding:16px 9px}
+  .toolbar{display:flex;gap:8px;justify-content:flex-end;margin-top:24px;align-items:center}
+  .note-block{font-size:11.5px;color:var(--faint);margin-top:10px;line-height:1.55}
+
+  .viewsw{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:4px;margin-bottom:18px}
+  .viewsw button{background:none;border:none;color:var(--mute);font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;font-size:13.5px;font-weight:500;padding:9px 20px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:7px}
+  .viewsw button.active{background:var(--gold);color:#1a1410}
+  .view{display:none}.view.active{display:block}
+
+  .seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .seg button{background:none;border:none;color:var(--mute);font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;font-size:13px;font-weight:500;padding:8px 16px;border-radius:7px;cursor:pointer}
+  .seg button.active{background:var(--recur);color:#10171f}
+  .legend2{display:flex;flex-wrap:wrap;gap:13px;font-size:11px;color:var(--mute);margin-top:8px}
+  .legend2 span{display:inline-flex;align-items:center;gap:6px}
+  .legend2 .pd{width:9px;height:9px;border-radius:3px}
+  .day{display:flex;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line)}
+  .day:last-child{border-bottom:none}
+  .daynum{flex:0 0 52px;text-align:center}
+  .daynum .n{font-family:ui-serif,'New York',Georgia,'Times New Roman',serif;font-size:25px;line-height:1;color:var(--ink)}
+  .daynum .o{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+  .daynum.pay .n{color:var(--income)}
+  .ditems{flex:1;display:flex;flex-direction:column;gap:7px}
+  .dit{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .dit .nm{display:flex;align-items:center;gap:9px;font-size:13.5px}
+  .dit .pd{width:8px;height:8px;border-radius:3px;flex:0 0 auto}
+  .dit .est{font-size:10px;color:var(--faint);margin-left:5px}
+  .dit .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13.5px}
+  .daysub{flex:0 0 90px;text-align:right;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--mute)}
+  .payrow{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
+  .payrow .ptag{font-size:10px;color:var(--income);border:1px solid rgba(118,179,132,.4);border-radius:20px;padding:2px 9px;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace}
+  .payrow .ptxt{font-size:12px;color:var(--mute)}
+  .anytime{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
+  .chip .pd{width:8px;height:8px;border-radius:3px}
+  .chip .nm{font-size:13px}
+  .chip .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--mute)}
+  .ccbrow{display:grid;grid-template-columns:1.2fr .8fr .55fr .8fr .8fr auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+  .ccbrow:last-of-type{border-bottom:none}
+  .ccbrow .lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);display:block;margin-bottom:3px}
+  .ccbrow input{width:100%}
+  .ccbrow .intv{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--card)}
+  @media(max-width:760px){.ccbrow{grid-template-columns:1fr 1fr 1fr}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Cash<span>flow</span> Forecast</h1>
+      <div class="sub">Installments decrement automatically · variable bills track per month · scroll to forecast or look back</div>
+    </div>
+    <div class="navmonth">
+      <button class="nbtn" id="prevM">‹</button>
+      <div class="mlabel" id="mlabel">—<small id="msub"></small></div>
+      <button class="nbtn" id="nextM">›</button>
+      <button class="today-btn" id="todayBtn">Today</button>
+    </div>
+    <div class="income-box">
+      <label>Take-home&nbsp;$</label>
+      <input id="income" class="mono" type="number" inputmode="decimal" placeholder="0">
+      <label style="margin-left:6px;color:var(--ccplan)">CC payment</label>
+      <span id="cardpayTot" class="mono" style="color:var(--ccplan);min-width:64px;display:inline-block">$0</span>
+      <span style="font-size:10.5px;color:var(--faint)">total · set per card below</span>
+      <span class="saved" id="savedFlag">saved ✓</span>
+    </div>
+  </header>
+
+  <div class="viewsw">
+    <button id="vwForecast" class="active" onclick="setView('forecast')">📊 Forecast</button>
+    <button id="vwCalendar" onclick="setView('calendar')">🗓 Calendar</button>
+  </div>
+
+  <div id="forecastView" class="view active">
+  <div class="cards" id="cards"></div>
+
+  <div class="charts">
+    <div class="panel">
+      <h2>12-month projection</h2>
+      <p class="ph">Wide bar = cash leaving checking (recurring + Affirm); green cap = take-home left. Narrow bar = spend billed to your credit card, shown separately. Click a bar to jump to that month.</p>
+      <div id="proj"></div>
+      <div class="chartlegend">
+        <span><span class="pd" style="background:var(--recur)"></span>Recurring (cash)</span>
+        <span><span class="pd" style="background:var(--affirm)"></span>Affirm (cash)</span>
+        <span><span class="pd" style="background:var(--ccplan)"></span>CC plans (card)</span>
+        <span><span class="pd" style="background:var(--card)"></span>Card charges (card)</span>
+        <span><span class="pd" style="background:var(--income);opacity:.5"></span>Cash remaining</span>
+      </div>
+      <div class="insight" id="insight"></div>
+    </div>
+    <div class="panel">
+      <h2>Where it goes</h2>
+      <p class="ph" id="compSub">Composition this month</p>
+      <div class="donutwrap">
+        <div id="donut"></div>
+        <div class="legend" id="donutLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sections"></div>
+
+  <div class="panel" id="ccBalPanel" style="margin-top:16px">
+    <div class="sechead"><div class="tt"><span class="pd" style="background:var(--card)"></span>Credit card balances</div><div class="sectot" id="ccBalTot"></div></div>
+    <p class="ph" style="margin-top:0">Enter each card's balance, APR, and the payment you make to <em>that</em> card. The summary ranks them by APR and shows a real payoff per card; the total payment feeds your cash outflow up top.</p>
+    <div id="ccBalRows"></div>
+    <div style="margin-top:10px"><button class="btn" onclick="ccbAdd()">+ Add card</button></div>
+    <div class="insight" id="ccBalSummary" style="border-left-color:var(--card)"></div>
+  </div>
+
+  <div class="toolbar">
+    <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+    <button class="btn sm" id="importBtn">Import JSON</button>
+    <button class="btn sm" id="exportBtn">Export JSON</button>
+  </div>
+  <div class="note-block">
+    <strong>Sections:</strong> Affirm and Credit-card plans are installments — anchored to the date you enter and counted forward for the payments left, so future months are exact and a plan drops off the month after its last payment. Credit-card charges (payments field blank) are ongoing every month. Recurring bills can be Fixed or "Varies monthly" (an estimate for forecasts plus a per-month actual). To avoid double-counting, don't list the same dollars in two sections. <strong>Backup:</strong> Export JSON saves a file of everything; Import JSON restores it.
+  </div>
+  </div>
+
+  <div id="calendarView" class="view">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div class="seg">
+        <button id="h1btn" class="active" onclick="setHalf(1)">1st – 15th</button>
+        <button id="h2btn" onclick="setHalf(2)">16th – end</button>
+      </div>
+      <div style="font-size:12px;color:var(--mute)" id="calMonthLbl"></div>
+    </div>
+
+    <div class="cards" id="calCards"></div>
+
+    <div class="panel">
+      <h2 id="tlTitle">Outflow timeline</h2>
+      <p class="ph">Bar height scaled to amount (square-root, so small bills stay visible). Green dashes = payday.</p>
+      <div id="timeline"></div>
+      <div class="legend2">
+        <span><span class="pd" style="background:var(--recur)"></span>Recurring</span>
+        <span><span class="pd" style="background:var(--affirm)"></span>Affirm</span>
+        <span><span class="pd" style="background:var(--ccplan)"></span>CC plan</span>
+        <span><span class="pd" style="background:var(--card)"></span>Card</span>
+        <span><span class="pd" style="background:var(--income)"></span>Payday</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 id="listTitle">Day by day</h2>
+      <p class="ph" id="listSub"></p>
+      <div id="days"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Anytime this month</h2>
+      <p class="ph">Variable spend with no fixed due-day — happens across the whole month, not on one day. Add a due-day to these items to place them on the calendar.</p>
+      <div class="anytime" id="anytime"></div>
+    </div>
+  </div>
+  </div>
+
+<script>
+const SECT={
+  affirm:{title:'Affirm loans',color:'var(--affirm)',raw:'#a98bc0',mode:'installment'},
+  ccplans:{title:'Credit card plans',color:'var(--ccplan)',raw:'#6aa9a0',mode:'installment'},
+  recurring:{title:'Recurring expenses',color:'var(--recur)',raw:'#7fa0c4',mode:'recurring'},
+  card:{title:'Credit-card charges',color:'var(--card)',raw:'#d77866',mode:'mixed'},
+};
+const SECTKEYS=['affirm','ccplans','recurring','card'];
+const STACK=[['recurring','#7fa0c4'],['affirm','#a98bc0'],['ccplans','#6aa9a0'],['card','#d77866']];
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const fmt=n=>'$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt0=n=>(n<0?'-':'')+'$'+Math.round(Math.abs(Number(n)||0)).toLocaleString('en-US');
+const KEY='cashflow:v3', OLDKEY='cashflow:v2';
+const META={affirm:{lab:'Affirm',col:'#a98bc0'},ccplans:{lab:'CC plan',col:'#6aa9a0'},recurring:{lab:'Recurring',col:'#7fa0c4'},card:{lab:'Card',col:'#d77866'}};
+const PAYDAYS=[15,30];
+function ord(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+let view='forecast', half=1;
+
+const SEED={
+  income:6000,
+  affirm:[
+    {name:'Example installment A', amount:45.00, date:'2026-06-05', left:6},
+    {name:'Example installment B', amount:30.00, date:'2026-06-15', left:3},
+  ],
+  ccplans:[
+    {name:'Example card plan', amount:80.00, date:'2026-06-20', left:9},
+  ],
+  recurring:[
+    {name:'Rent',          amount:1800, day:1,   variable:false, months:{}},
+    {name:'Car payment',   amount:350,  day:10,  variable:false, months:{}},
+    {name:'Internet',      amount:70,   day:15,  variable:false, months:{}},
+    {name:'Subscriptions', amount:45,   day:18,  variable:false, months:{}},
+    {name:'Electric',      amount:90,   day:20,  variable:true,  months:{}},
+    {name:'Phone',         amount:60,   day:17,  variable:true,  months:{}},
+    {name:'Groceries',     amount:500,  day:null, variable:true, months:{}},
+    {name:'Gas',           amount:150,  day:null, variable:true, months:{}},
+    {name:'Discretionary (dining, fun)', amount:400, day:null, variable:true, months:{}},
+    {name:'Example future loan', amount:200, day:1, variable:false, months:{}, start:'2026-10'},
+  ],
+  card:[
+    {name:'Streaming',     amount:16, date:'2026-06-08', left:''},
+    {name:'Cloud storage', amount:10, date:'2026-06-08', left:''},
+  ],
+  ccBalances:[
+    {name:'Card 1', balance:1500, apr:21.99, payment:300},
+    {name:'Card 2', balance:0,    apr:0,     payment:0},
+  ],
+};
+const VAR_DEFAULTS=['Energy','Phone','Groceries','Gas'];
+
+let S=null, selIdx=null, editing={sect:null,id:null}, editTypeTmp=null, addOpen={};
+
+const mi=(y,m)=>y*12+m;
+function curIdx(){const n=new Date();return mi(n.getFullYear(),n.getMonth());}
+function idxToYM(i){return {y:Math.floor(i/12), m:i%12};}
+function ymKey(i){const {y,m}=idxToYM(i);return y+'-'+String(m+1).padStart(2,'0');}
+function parseStart(d){if(!d)return null;const p=d.split('-').map(Number);return mi(p[0],p[1]-1);}
+function uid(){return 'x'+Math.random().toString(36).slice(2,9);}
+
+function normalize(s){
+  s=s||{};
+  s.income=Number(s.income)||0;
+  s.cardPayment=Number(s.cardPayment)||0;
+  if(!s.cardPayMonths||typeof s.cardPayMonths!=='object')s.cardPayMonths={};
+  SECTKEYS.forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];s[k].forEach(it=>{if(!it.id)it.id=uid();if(it.on===undefined)it.on=true;});});
+  s.recurring.forEach(it=>{if(it.variable===undefined)it.variable=false;if(!it.months||typeof it.months!=='object')it.months={};});
+  if(!Array.isArray(s.ccBalances))s.ccBalances=[];
+  s.ccBalances.forEach(c=>{if(!c.id)c.id=uid();c.balance=Number(c.balance)||0;c.apr=Number(c.apr)||0;c.payment=Number(c.payment)||0;if(!c.name)c.name='Card';});
+  return s;
+}
+function migrateV2(s){ // v2 had no ccplans and possibly no variable fields
+  s.ccplans=s.ccplans||[];
+  const have=new Set((s.recurring||[]).map(x=>(x.name||'').toLowerCase()));
+  VAR_DEFAULTS.forEach(nm=>{if(!have.has(nm.toLowerCase()))(s.recurring=s.recurring||[]).push({id:uid(),name:nm,amount:0,day:null,variable:true,months:{}});});
+  return s;
+}
+
+// Storage works both inside claude.ai (window.storage) and as a local desktop file (localStorage).
+const LS=(()=>{try{if(typeof window!=='undefined'&&window.localStorage){window.localStorage.getItem('__probe');return window.localStorage;}}catch(e){}return null;})();
+const store={
+  async get(k){
+    try{if(typeof window!=='undefined'&&window.storage&&window.storage.get)return await window.storage.get(k);}catch(e){}
+    if(LS){const v=LS.getItem(k);return v==null?null:{key:k,value:v};}
+    return null;
+  },
+  async set(k,v){
+    try{if(typeof window!=='undefined'&&window.storage&&window.storage.set)return await window.storage.set(k,v);}catch(e){}
+    if(LS){LS.setItem(k,v);return {key:k,value:v};}
+    return null;
+  }
+};
+
+async function load(){
+  try{const r=await store.get(KEY); if(r&&r.value){S=JSON.parse(r.value);}}catch(e){S=null;}
+  if(!S){
+    let old=null;
+    try{const r2=await store.get(OLDKEY); if(r2&&r2.value) old=JSON.parse(r2.value);}catch(e){}
+    if(old){ S=migrateV2(old); }
+    else { S=JSON.parse(JSON.stringify(SEED)); }
+  }
+  S=normalize(S);
+  await save();
+  selIdx=curIdx();
+  document.getElementById('income').value=S.income||'';
+  render();
+}
+function cardPaymentTotal(){return (S.ccBalances||[]).reduce((s,c)=>s+(Number(c.payment)||0),0);}
+function updateCardPayHeader(){const el=document.getElementById('cardpayTot');if(el)el.textContent=fmt0(cardPaymentTotal());}
+async function save(){try{await store.set(KEY,JSON.stringify(S));flash();}catch(e){console.error(e);}}
+function flash(){const f=document.getElementById('savedFlag');f.classList.add('show');setTimeout(()=>f.classList.remove('show'),1100);}
+
+function monthStartIdx(s){if(!s)return null;const p=String(s).split('-').map(Number);return mi(p[0],(p[1]||1)-1);}
+function evalItem(it,sect,vi){
+  if(it.on===false)return {amt:0,active:false,status:'off'};
+  if(SECT[sect].mode==='recurring'){
+    const st=monthStartIdx(it.start);
+    if(st!=null&&vi<st)return {amt:0,active:false,status:'pending'};
+    if(it.variable){
+      const key=ymKey(vi), has=it.months&&it.months[key]!=null;
+      return {amt:has?Number(it.months[key]):(Number(it.amount)||0),active:true,status:'on',est:!has};
+    }
+    return {amt:Number(it.amount)||0,active:true,status:'on'};
+  }
+  const amt=Number(it.amount)||0;
+  const hasLeft=it.left!==''&&it.left!=null&&!isNaN(Number(it.left));
+  const start=parseStart(it.date);
+  if(!hasLeft){
+    if(start!=null&&vi<start)return {amt:0,active:false,status:'pending'};
+    return {amt,active:true,status:'on'};
+  }
+  const left=Number(it.left);
+  if(start==null)return {amt,active:true,status:'on'};
+  if(vi<start)return {amt:0,active:false,status:'pending'};
+  if(vi<=start+left-1)return {amt,active:true,status:'on',leftAt:left-(vi-start)};
+  return {amt:0,active:false,status:'done'};
+}
+function sectionSum(sect,vi){return S[sect].reduce((s,it)=>s+evalItem(it,sect,vi).amt,0);}
+function monthTotal(vi){return SECTKEYS.reduce((s,k)=>s+sectionSum(k,vi),0);}
+
+function render(){
+  renderHeader();
+  updateCardPayHeader();
+  if(view==='forecast'){renderCards();renderProjection();renderDonut();renderSections();renderCardBalances();}
+  else{renderCalendar();}
+}
+
+window.setView=v=>{
+  view=v;
+  document.getElementById('vwForecast').classList.toggle('active',v==='forecast');
+  document.getElementById('vwCalendar').classList.toggle('active',v==='calendar');
+  document.getElementById('forecastView').classList.toggle('active',v==='forecast');
+  document.getElementById('calendarView').classList.toggle('active',v==='calendar');
+  render();
+};
+window.setHalf=h=>{half=h;document.getElementById('h1btn').classList.toggle('active',h===1);document.getElementById('h2btn').classList.toggle('active',h===2);renderCalendar();};
+
+function dayOf(it,sect){
+  if(sect==='recurring')return (it.day==null?null:Number(it.day));
+  if(it.date){return Number(it.date.split('-')[2]);}
+  return null;
+}
+function calItems(){
+  const out=[];
+  SECTKEYS.forEach(sect=>{(S[sect]||[]).forEach(it=>{
+    const ev=evalItem(it,sect,selIdx);
+    if(ev.status!=='on'||ev.amt<=0)return;
+    out.push({sect,name:it.name,amount:ev.amt,day:dayOf(it,sect),variable:!!it.variable,est:!!ev.est});
+  });});
+  return out;
+}
+function inHalf(day){return half===1?(day>=1&&day<=15):(day>=16);}
+
+function renderCalendar(){
+  const m=MONL[idxToYM(selIdx).m];
+  document.getElementById('calMonthLbl').textContent='Showing '+m+' '+idxToYM(selIdx).y+' — switch months with the arrows above';
+  const items=calItems();
+  const dated=items.filter(i=>i.day!=null), undated=items.filter(i=>i.day==null);
+  const halfItems=dated.filter(i=>inHalf(i.day));
+  const otherTotal=dated.filter(i=>!inHalf(i.day)).reduce((s,i)=>s+i.amount,0);
+  const halfTotal=halfItems.reduce((s,i)=>s+i.amount,0);
+  const undTotal=undated.reduce((s,i)=>s+i.amount,0);
+  const days=[...new Set(halfItems.map(i=>i.day))].sort((a,b)=>a-b);
+  const label=half===1?'1st – 15th':'16th – end';
+
+  document.getElementById('calCards').innerHTML=[
+    `<div class="card accent"><div class="lab">${label} dated</div><div class="big">${fmt(halfTotal)}</div><div class="note">${halfItems.length} payments · ${days.length} days</div></div>`,
+    `<div class="card"><div class="lab">Other half</div><div class="big">${fmt(otherTotal)}</div><div class="note">${half===1?'16th – end':'1st – 15th'}</div></div>`,
+    `<div class="card"><div class="lab">Anytime</div><div class="big">${fmt(undTotal)}</div><div class="note">no fixed day</div></div>`,
+    `<div class="card"><div class="lab">${m} all dated</div><div class="big">${fmt(halfTotal+otherTotal)}</div><div class="note">+ ${fmt(undTotal)} anytime</div></div>`,
+  ].join('');
+
+  renderTimeline(halfItems);
+  document.getElementById('tlTitle').textContent='Outflow timeline · '+label;
+  document.getElementById('listTitle').textContent='Day by day · '+label;
+  document.getElementById('listSub').textContent=days.length?(fmt(halfTotal)+' across '+days.length+' days'):'No dated bills in this half.';
+
+  const start=half===1?1:16,end=half===1?15:31;
+  const payInHalf=PAYDAYS.filter(p=>p>=start&&p<=end);
+  const rowsByDay={};days.forEach(d=>{rowsByDay[d]=halfItems.filter(i=>i.day===d).sort((a,b)=>b.amount-a.amount);});
+  let html='';
+  [...new Set([...days,...payInHalf])].sort((a,b)=>a-b).forEach(d=>{
+    const isPay=payInHalf.includes(d),its=rowsByDay[d]||[];
+    if(its.length){
+      const sub=its.reduce((s,i)=>s+i.amount,0);
+      html+=`<div class="day"><div class="daynum ${isPay?'pay':''}"><div class="n">${d}</div><div class="o">${ord(d).replace(d,'')}</div></div><div class="ditems">`+
+        its.map(i=>`<div class="dit"><span class="nm"><span class="pd" style="background:${META[i.sect].col}"></span>${esc(i.name)}${i.est?'<span class="est">est</span>':''}</span><span class="vl">${fmt(i.amount)}</span></div>`).join('')+
+        `</div><div class="daysub">${fmt(sub)}</div></div>`;
+    }
+    if(isPay)html+=`<div class="payrow"><span class="ptag">payday ~${ord(d)}</span><span class="ptxt">paycheck in${S.income?' (~'+fmt0(S.income/2)+')':''}</span></div>`;
+  });
+  document.getElementById('days').innerHTML=html||'<div style="color:var(--faint);font-size:13px;padding:10px 4px">Nothing dated in this half for '+m+'.</div>';
+
+  document.getElementById('anytime').innerHTML=undated.length?undated.map(i=>
+    `<div class="chip"><span class="pd" style="background:${META[i.sect].col}"></span><span class="nm">${esc(i.name)}</span><span class="vl">${fmt(i.amount)}${i.est?' est':''}</span></div>`
+  ).join(''):'<div style="color:var(--faint);font-size:13px">Nothing undated.</div>';
+}
+
+function renderTimeline(items){
+  const start=half===1?1:16,end=half===1?15:31;
+  const byDay={};items.forEach(i=>byDay[i.day]=(byDay[i.day]||0)+i.amount);
+  const maxV=Math.max(1,...Object.values(byDay));
+  const W=900,H=170,padL=8,padR=8,padB=26,padT=12;
+  const n=end-start+1,plotW=W-padL-padR,plotH=H-padB-padT,slot=plotW/n,bw=Math.min(slot*0.62,34);
+  const sq=v=>Math.sqrt(v/maxV);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="ui-monospace, Menlo, monospace">`;
+  svg+=`<line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="#332c26"/>`;
+  for(let d=start;d<=end;d++){
+    const x=padL+slot*(d-start)+slot/2,v=byDay[d]||0;
+    if(PAYDAYS.includes(d))svg+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+plotH}" stroke="#76b384" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    if(v>0){
+      const h=sq(v)*plotH,y=padT+plotH-h;
+      const its=items.filter(i=>i.day===d);let best=null,bv=-1;its.forEach(i=>{if(i.amount>bv){bv=i.amount;best=i.sect;}});
+      svg+=`<rect x="${x-bw/2}" y="${y}" width="${bw}" height="${h}" rx="3" fill="${META[best].col}"/>`;
+      svg+=`<text x="${x}" y="${y-4}" fill="#9a8e80" font-size="9" text-anchor="middle">$${Math.round(v)}</text>`;
+    }
+    if((d-start)%(n>15?2:1)===0||PAYDAYS.includes(d))
+      svg+=`<text x="${x}" y="${H-padB+15}" fill="${PAYDAYS.includes(d)?'#76b384':'#6b6258'}" font-size="9" text-anchor="middle">${d}</text>`;
+  }
+  svg+='</svg>';
+  document.getElementById('timeline').innerHTML=svg;
+}
+
+function renderHeader(){
+  const {y,m}=idxToYM(selIdx),c=curIdx();
+  document.getElementById('mlabel').firstChild.textContent=MONL[m]+' '+y;
+  const sub=document.getElementById('msub');
+  if(selIdx>c){sub.textContent='forecast +'+(selIdx-c)+'mo';sub.className='future';}
+  else if(selIdx<c){sub.textContent='past '+(c-selIdx)+'mo';sub.className='past';}
+  else{sub.textContent='this month';sub.className='';}
+}
+
+function renderCards(){
+  const a=sectionSum('affirm',selIdx),cp=sectionSum('ccplans',selIdx),r=sectionSum('recurring',selIdx),cc=sectionSum('card',selIdx);
+  const pay=cardPaymentTotal();
+  const checking=r+a+pay;         // leaves your bank: recurring + Affirm (ACH) + total card payments
+  const cardSpend=cp+cc;          // accrues to card balance: CC plans + charges (tracked here)
+  const inc=Number(S.income)||0,left=inc-checking;
+  const delta=pay-cardSpend;      // payment vs what's being charged (of tracked items)
+  const m=MON[idxToYM(selIdx).m];
+  const nCards=(S.ccBalances||[]).filter(c=>c.payment>0).length;
+  document.getElementById('cards').innerHTML=[
+    `<div class="card accent"><div class="lab">${m} cash outflow</div><div class="big">${fmt(checking)}</div><div class="note">incl. ${fmt0(pay)} card payments · ${inc?Math.round(checking/inc*100)+'% of take-home':'set take-home'}</div></div>`,
+    `<div class="card" style="border-color:rgba(106,169,160,.4)"><div class="lab">Card payments</div><div class="big" style="color:var(--ccplan)">${fmt(pay)}</div><div class="note">${nCards?'across '+nCards+' card'+(nCards>1?'s':'')+' · set below':'set per card below'}</div></div>`,
+    `<div class="card left ${left<0?'neg':''}"><div class="lab">Remaining cash</div><div class="big">${inc?fmt0(left):'—'}</div><div class="note">${inc?(left<0?'over take-home':'after all cash outflow'):'add take-home'}</div></div>`,
+    `<div class="card"><div class="lab">Card balance trend</div><div class="big" style="color:${delta<0?'var(--card)':'var(--income)'}">${delta<0?'+'+fmt0(-delta):'−'+fmt0(delta)}</div><div class="note">${delta<0?'tracked charges exceed payments':'payments cover tracked charges'}</div></div>`,
+  ].join('');
+}
+
+function renderProjection(){
+  const base=curIdx()-1,N=12;
+  const data=[];
+  for(let k=0;k<N;k++){const vi=base+k;const sums={};SECTKEYS.forEach(s=>sums[s]=sectionSum(s,vi));
+    sums.pay=cardPaymentTotal();
+    sums.checking=sums.recurring+sums.affirm+sums.pay; sums.card_=sums.ccplans+sums.card; sums.total=sums.checking+sums.card_; sums.vi=vi; data.push(sums);}
+  const inc=Number(S.income)||0;
+  const checkingArr=data.map(d=>d.checking), cardArr=data.map(d=>d.card_);
+  const maxV=Math.max(...checkingArr,...cardArr,inc,1)*1.12;
+  const W=720,H=300,padL=10,padR=10,padB=30,padT=16;
+  const plotH=H-padB-padT,plotW=W-padL-padR,slot=plotW/N;
+  const groupW=slot*0.74, chkW=groupW*0.6, cardW=groupW*0.3, gap=groupW*0.1;
+  const yOf=v=>padT+plotH-(v/maxV*plotH);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="ui-monospace, Menlo, monospace">`;
+  for(let g=1;g<=3;g++){const v=maxV*g/3.3,y=yOf(v);svg+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#332c26" stroke-width="1"/><text x="${padL+2}" y="${y-4}" fill="#6b6258" font-size="9">${fmt0(v)}</text>`;}
+  data.forEach((d,k)=>{
+    const gx=padL+slot*k+(slot-groupW)/2, sel=d.vi===selIdx;
+    const chkX=gx, cardX=gx+chkW+gap;
+    // checking stack (recurring + affirm)
+    let yb=padT+plotH;
+    [['recurring','#7fa0c4'],['affirm','#a98bc0'],['pay','#6aa9a0']].forEach(([key,col])=>{const val=d[key];if(val<=0)return;const h=val/maxV*plotH;yb-=h;svg+=`<rect x="${chkX}" y="${yb}" width="${chkW}" height="${h}" fill="${col}" ${key==='pay'?'opacity="0.55"':''} rx="2"/>`;});
+    // cash remaining cap over checking bar
+    if(inc>0){
+      const rem=inc-d.checking,yInc=yOf(inc),yChk=yOf(d.checking);
+      if(rem>0)svg+=`<rect x="${chkX}" y="${yInc}" width="${chkW}" height="${Math.max(0,yChk-yInc)}" fill="#76b384" opacity="0.16" stroke="#76b384" stroke-opacity="0.55" stroke-width="1" rx="2"/>`;
+      else if(rem<0)svg+=`<rect x="${chkX}" y="${yChk}" width="${chkW}" height="${Math.max(0,yInc-yChk)}" fill="#d77866" opacity="0.22" stroke="#d77866" stroke-opacity="0.7" stroke-width="1" rx="2"/>`;
+    }
+    // separate card-spend bar (ccplans + charges)
+    let cyb=padT+plotH;
+    [['ccplans','#6aa9a0'],['card','#d77866']].forEach(([key,col])=>{const val=d[key];if(val<=0)return;const h=val/maxV*plotH;cyb-=h;svg+=`<rect x="${cardX}" y="${cyb}" width="${cardW}" height="${h}" fill="${col}" opacity="0.9" rx="2"/>`;});
+    if(d.card_>0)svg+=`<text x="${cardX+cardW/2}" y="${yOf(d.card_)-3}" fill="#6aa9a0" font-size="7.5" text-anchor="middle">card</text>`;
+    if(sel){svg+=`<rect x="${gx-3}" y="${padT-2}" width="${groupW+6}" height="${plotH+2}" fill="#e0a64e" opacity="0.06" rx="4"/>`;
+      if(inc>0){const rem=inc-d.checking;svg+=`<text x="${chkX+chkW/2}" y="${Math.max(yOf(Math.max(inc,d.checking))-7,12)}" fill="${rem<0?'#d77866':'#76b384'}" font-size="10" text-anchor="middle">${rem<0?'over '+fmt0(-rem):fmt0(rem)+' cash'}</text>`;}
+    }
+    const ym=idxToYM(d.vi);
+    svg+=`<text x="${gx+groupW/2}" y="${H-padB+14}" fill="${sel?'#f1ebe3':'#6b6258'}" font-size="10" text-anchor="middle">${MON[ym.m]}</text>`;
+    if(ym.m===0)svg+=`<text x="${gx+groupW/2}" y="${H-padB+25}" fill="#6b6258" font-size="8" text-anchor="middle">'${String(ym.y).slice(2)}</text>`;
+    svg+=`<rect x="${padL+slot*k}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" style="cursor:pointer" onclick="selectMonth(${d.vi})"/>`;
+  });
+  if(inc>0){const y=yOf(inc);svg+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#76b384" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${W-padR-2}" y="${y-4}" fill="#76b384" font-size="9" text-anchor="end">take-home ${fmt0(inc)}</text>`;}
+  svg+='</svg>';
+  document.getElementById('proj').innerHTML=svg;
+
+  const totals=data.map(d=>d.total);
+  let drop={amt:0,vi:null};
+  for(let k=1;k<N;k++){const d=totals[k-1]-totals[k];if(d>drop.amt)drop={amt:d,vi:data[k].vi};}
+  const el=document.getElementById('insight');
+  if(drop.vi!=null&&drop.amt>1){
+    const ym=idxToYM(drop.vi);
+    const installs=[...S.affirm,...S.ccplans];
+    const ending=installs.filter(it=>{const st=parseStart(it.date);return st!=null&&it.left!==''&&it.left!=null&&st+Number(it.left)-1===drop.vi-1;}).map(it=>it.name);
+    el.innerHTML=`Biggest relief: expenses drop <strong>${fmt0(drop.amt)}/mo</strong> starting <strong>${MONL[ym.m]} ${ym.y}</strong>${ending.length?' as '+ending.join(' & ')+' clear'+(ending.length>1?'':'s'):''}.`;
+  }else el.innerHTML='Add installment plans with payments-left to see when your monthly load drops.';
+}
+
+function renderDonut(){
+  const sums={affirm:sectionSum('affirm',selIdx),ccplans:sectionSum('ccplans',selIdx),recurring:sectionSum('recurring',selIdx),card:sectionSum('card',selIdx)};
+  const checking=sums.recurring+sums.affirm, cardSpend=sums.ccplans+sums.card, total=checking+cardSpend;
+  document.getElementById('compSub').textContent='Cash vs card · '+MONL[idxToYM(selIdx).m];
+  // outer ring: cash vs card; we render four arcs but grouped/ordered so cash sits together and card sits together
+  const segs=[['Recurring',sums.recurring,'#7fa0c4'],['Affirm',sums.affirm,'#a98bc0'],['CC plans',sums.ccplans,'#6aa9a0'],['Card charges',sums.card,'#d77866']];
+  const R=64,C=2*Math.PI*R,cx=80,cy=80;let off=0,arcs='';
+  if(total>0)segs.forEach(([nm,v,col])=>{if(v<=0)return;const len=v/total*C;arcs+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${col}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;off+=len;});
+  else arcs=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#241f1b" stroke-width="22"/>`;
+  document.getElementById('donut').innerHTML=`<svg viewBox="0 0 160 160" width="160" height="160" font-family="ui-monospace, Menlo, monospace">${arcs}<text x="${cx}" y="${cy-3}" text-anchor="middle" fill="#f1ebe3" font-size="17" font-weight="600">${fmt0(total)}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" fill="#6b6258" font-size="9">total</text></svg>`;
+  document.getElementById('donutLegend').innerHTML=
+    `<div class="li" style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:-2px">From checking · ${fmt0(checking)}</div>`+
+    `<div class="li"><span class="nm"><span class="pd" style="background:#7fa0c4"></span>Recurring</span><span class="vl">${fmt(sums.recurring)}</span></div>`+
+    `<div class="li"><span class="nm"><span class="pd" style="background:#a98bc0"></span>Affirm</span><span class="vl">${fmt(sums.affirm)}</span></div>`+
+    `<div class="li" style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin:6px 0 -2px">On credit card · ${fmt0(cardSpend)}</div>`+
+    `<div class="li"><span class="nm"><span class="pd" style="background:#6aa9a0"></span>CC plans</span><span class="vl">${fmt(sums.ccplans)}</span></div>`+
+    `<div class="li"><span class="nm"><span class="pd" style="background:#d77866"></span>Card charges</span><span class="vl">${fmt(sums.card)}</span></div>`;
+}
+
+function renderSections(){document.getElementById('sections').innerHTML=SECTKEYS.map(sectionHTML).join('');}
+
+function renderCardBalances(){
+  const rows=S.ccBalances.map(c=>`<div class="ccbrow">
+    <div><span class="lab">Card</span><input value="${esc(c.name)}" oninput="ccbInput('${c.id}','name',this.value)"></div>
+    <div><span class="lab">Balance $</span><input class="mono" type="number" inputmode="decimal" value="${c.balance||''}" placeholder="0" oninput="ccbInput('${c.id}','balance',this.value)"></div>
+    <div><span class="lab">APR %</span><input class="mono" type="number" inputmode="decimal" value="${c.apr||''}" placeholder="0" oninput="ccbInput('${c.id}','apr',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan)">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" oninput="ccbInput('${c.id}','payment',this.value)"></div>
+    <div><span class="lab">Interest/mo</span><span class="intv" id="ccbint_${c.id}">$0.00</span></div>
+    <div style="text-align:right"><button class="icon-btn" title="remove" onclick="ccbDel('${c.id}')">🗑</button></div>
+  </div>`).join('')||'<div class="empty">No cards yet — add a credit card to track its balance and payoff.</div>';
+  document.getElementById('ccBalRows').innerHTML=rows;
+  ccbRecalc();
+}
+function payoffOf(bal,apr,pay){
+  const im=apr/100/12, interest=bal*im;
+  if(bal<=0)return {state:'none',interest:0};
+  if(pay<=0)return {state:'nopay',interest};
+  if(pay<=interest)return {state:'under',interest};
+  const n=Math.ceil(-Math.log(1-bal*im/pay)/Math.log(1+im));
+  return {state:'ok',interest,n,paid:pay*n-bal};
+}
+function ccbRecalc(){
+  let totB=0,totI=0,totP=0;
+  S.ccBalances.forEach(c=>{
+    const i=(Number(c.balance)||0)*(Number(c.apr)||0)/100/12;
+    const span=document.getElementById('ccbint_'+c.id); if(span)span.textContent=fmt(i);
+    totB+=Number(c.balance)||0; totI+=i; totP+=Number(c.payment)||0;
+  });
+  updateCardPayHeader();
+  document.getElementById('ccBalTot').innerHTML=`${fmt(totB)} balance · ${fmt(totI)}/mo interest · ${fmt(totP)}/mo paid`;
+  const charging=sectionSum('ccplans',selIdx)+sectionSum('card',selIdx);
+  const active=S.ccBalances.filter(c=>Number(c.balance)>0);
+  let html;
+  if(!active.length){html='Enter a balance, APR, and a monthly payment per card to see payoff times and which card to attack first.';}
+  else{
+    const ranked=[...active].sort((a,b)=>(Number(b.apr)||0)-(Number(a.apr)||0));
+    const target=ranked[0];
+    const lines=ranked.map(c=>{
+      const po=payoffOf(Number(c.balance),Number(c.apr),Number(c.payment));
+      let t;
+      if(po.state==='nopay')t=`set a payment`;
+      else if(po.state==='under')t=`<span style="color:var(--card)">underwater</span> — ${fmt0(c.payment)}/mo < ${fmt0(po.interest)}/mo interest, balance grows`;
+      else t=`paid off ~<strong>${po.n}mo</strong>, ~${fmt0(po.paid)} interest`;
+      return `<div style="margin:2px 0">• <strong>${esc(c.name)}</strong> — ${fmt0(c.balance)} at ${(Number(c.apr)||0).toFixed(2)}%, ${fmt0(c.payment)}/mo → ${t}</div>`;
+    }).join('');
+    const avalanche=`<div style="margin-top:8px"><strong>Avalanche:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${(Number(target.apr)||0).toFixed(2)}% — your most expensive). Clear it, then roll its payment onto the next-highest APR.</div>`;
+    const note=charging>0?`<div style="margin-top:6px;color:var(--mute)">You're charging ${fmt0(charging)}/mo in tracked plans + charges — that adds back to these balances if not paid off in full.</div>`:'';
+    html=`<div style="margin-bottom:6px">${fmt0(totB)} total at ${fmt0(totI)}/mo interest:</div>${lines}${avalanche}${note}`;
+  }
+  document.getElementById('ccBalSummary').innerHTML=html;
+}
+let ccbT;
+window.ccbInput=(id,field,val)=>{
+  const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
+  c[field]=field==='name'?val:(Number(val)||0);
+  ccbRecalc();
+  if(field==='payment'){renderCards();renderProjection();}
+  clearTimeout(ccbT);ccbT=setTimeout(save,400);
+};
+window.ccbAdd=()=>{S.ccBalances.push({id:uid(),name:'Card',balance:0,apr:0,payment:0});save();renderCardBalances();};
+window.ccbDel=(id)=>{S.ccBalances=S.ccBalances.filter(x=>x.id!==id);save();renderCardBalances();renderCards();renderProjection();};
+function sectionHTML(sect){
+  const cfg=SECT[sect],tot=sectionSum(sect,selIdx),m=MON[idxToYM(selIdx).m];
+  const pausedN=S[sect].filter(x=>x.on===false).length;
+  const pausedTxt=pausedN?` · <span style="color:var(--faint)">${pausedN} paused</span>`:'';
+  const rows=[...S[sect]].sort((a,b)=>evalItem(b,sect,selIdx).amt-evalItem(a,sect,selIdx).amt).map(it=>rowHTML(sect,it)).join('')||`<tr><td colspan="5" class="empty">${emptyMsg(sect)}</td></tr>`;
+  const ths=sect==='recurring'
+    ?`<th>Item</th><th>Due day</th><th>Type</th><th class="amt">${m} $</th><th style="width:60px"></th>`
+    :`<th>Item</th><th>Next date</th><th>Payments left</th><th class="amt">Monthly $</th><th style="width:60px"></th>`;
+  return `<div class="section panel">
+    <div class="sechead"><div class="tt"><span class="pd" style="background:${cfg.color}"></span>${cfg.title}</div><div class="sectot">${fmt(tot)} / mo · ${m}${pausedTxt}</div></div>
+    <table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>
+    ${addFormHTML(sect)}
+    <div style="margin-top:10px"><button class="btn" onclick="toggleAdd('${sect}')">${addOpen[sect]?'Cancel':'+ Add '+addLabel(sect)}</button></div>
+  </div>`;
+}
+function addLabel(sect){return sect==='affirm'?'loan':sect==='ccplans'?'plan':sect==='card'?'charge':'expense';}
+function emptyMsg(sect){
+  if(sect==='card')return 'No card charges yet. Add subscriptions (leave Payments left blank) and any one-off ongoing charges.';
+  if(sect==='ccplans')return 'No credit-card plans yet. Add financed card purchases (monthly installment / pay-over-time plans) with the number of payments left.';
+  return 'Nothing here yet.';
+}
+
+function rowHTML(sect,it){
+  if(editing.sect===sect&&editing.id===it.id)return editRowHTML(sect,it);
+  const ev=evalItem(it,sect,selIdx);
+  const off=it.on===false;
+  const cls=off?'done':ev.status==='done'?'done':ev.status==='pending'?'pending':'';
+  if(sect==='recurring'){
+    const badge=it.variable?'<span class="tag var">varies</span>':'';
+    const offbadge=off?'<span class="tag">paused</span>':'';
+    const startTxt=(it.start&&ev.status==='pending')?(()=>{const s=monthStartIdx(it.start);const ym=idxToYM(s);return `<span class="tag" style="color:var(--gold);border-color:rgba(224,166,78,.4)">starts ${MON[ym.m]} '${String(ym.y).slice(2)}</span>`;})():'';
+    const amtTxt=off?'<span style="color:var(--faint)">'+fmt(it.variable?(it.amount||0):it.amount)+'</span>'
+      :ev.status==='pending'?'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>'
+      :fmt(ev.amt)+(ev.est?' <span class="estmark">est</span>':'');
+    return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${badge}${startTxt}${offbadge}</td><td class="mono" style="color:var(--mute)">${it.day?'day '+it.day:'—'}</td><td style="color:var(--mute);font-size:12px">${it.variable?'Varies':'Fixed'}</td><td class="amt">${amtTxt}</td>${actions(sect,it)}</tr>`;
+  }
+  const offbadge=off?'<span class="tag">paused</span>':'';
+  const leftTxt=off?'<span class="leftpill">paused</span>':(it.left===''||it.left==null)?'<span class="leftpill">ongoing</span>':ev.status==='done'?'<span class="leftpill">paid off</span>':ev.status==='pending'?'<span class="leftpill">starts '+fmtDate(it.date)+'</span>':'<span class="leftpill">'+ev.leftAt+' left</span>';
+  return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${offbadge}</td><td class="mono" style="color:var(--mute)">${it.date?fmtDate(it.date):'—'}</td><td>${leftTxt}</td><td class="amt">${(ev.status==='on'&&!off)?fmt(it.amount):'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>'}</td>${actions(sect,it)}</tr>`;
+}
+function actions(sect,it){
+  const off=it.on===false;
+  const toggle=`<button class="icon-btn" title="${off?'Turn on':'Turn off'}" onclick="toggleOn('${sect}','${it.id}')">${off?'○':'◉'}</button>`;
+  return `<td style="text-align:right;white-space:nowrap">${toggle}<button class="icon-btn" onclick="startEdit('${sect}','${it.id}')">✎</button><button class="icon-btn" onclick="del('${sect}','${it.id}')">🗑</button></td>`;
+}
+
+function editRowHTML(sect,it){
+  const act=`<td style="text-align:right;white-space:nowrap"><button class="icon-btn" onclick="commitEdit('${sect}','${it.id}')">✓</button><button class="icon-btn" onclick="cancelEdit()">✕</button></td>`;
+  const nameI=`<td class="editcell"><input id="ed_name" value="${esc(it.name)}"></td>`;
+  if(sect==='recurring'){
+    const varies=editTypeTmp!=null?editTypeTmp==='varies':it.variable;
+    const m=MON[idxToYM(selIdx).m],key=ymKey(selIdx);
+    const typeSel=`<td class="editcell"><select id="ed_type" onchange="setEditType(this.value)"><option value="fixed" ${!varies?'selected':''}>Fixed</option><option value="varies" ${varies?'selected':''}>Varies</option></select></td>`;
+    const amtCell=varies
+      ?`<td class="editcell"><div style="display:flex;gap:5px"><input id="ed_est" class="mono" type="number" value="${it.amount||''}" placeholder="est/mo" title="estimate"><input id="ed_actual" class="mono" type="number" value="${(it.months&&it.months[key]!=null)?it.months[key]:''}" placeholder="${m} actual" title="actual for ${m}"></div></td>`
+      :`<td class="editcell"><input id="ed_amt" class="mono" type="number" value="${it.amount||''}"></td>`;
+    return `<tr>${nameI}<td class="editcell"><input id="ed_day" type="number" min="1" max="31" value="${it.day||''}"></td>${typeSel}${amtCell}${act}</tr>`;
+  }
+  const leftPh=sect==='card'?'blank=ongoing':'# payments';
+  return `<tr>${nameI}<td class="editcell"><input id="ed_date" type="date" value="${it.date||''}"></td><td class="editcell"><input id="ed_left" type="number" min="0" placeholder="${leftPh}" value="${it.left??''}"></td><td class="editcell"><input id="ed_amt" class="mono" type="number" value="${it.amount||''}"></td>${act}</tr>`;
+}
+
+function addFormHTML(sect){
+  if(!addOpen[sect])return '';
+  if(sect==='recurring')return `<div class="addrow" style="grid-template-columns:1.3fr .6fr .8fr .8fr .9fr auto"><input id="af_name" placeholder="e.g. Water"><input id="af_day" type="number" min="1" max="31" placeholder="Due day"><select id="af_type"><option value="fixed">Fixed</option><option value="varies">Varies</option></select><input id="af_amt" class="mono" type="number" placeholder="Amount / est"><input id="af_start" type="month" title="Optional: month it starts"><button class="btn" onclick="addItem('recurring')">Save</button></div>`;
+  const namePh=sect==='affirm'?'e.g. Mattress':sect==='ccplans'?'e.g. Laptop installments':'e.g. Streaming';
+  const leftPh=sect==='card'?'blank=ongoing':'# payments';
+  return `<div class="addrow" style="grid-template-columns:1.4fr 1fr .9fr .9fr auto"><input id="af_name" placeholder="${namePh}"><input id="af_date" type="date"><input id="af_left" type="number" min="0" placeholder="${leftPh}"><input id="af_amt" class="mono" type="number" placeholder="Amount"><button class="btn" onclick="addItem('${sect}')">Save</button></div>`;
+}
+
+function esc(s){return String(s).replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function fmtDate(d){const p=d.split('-');return MON[Number(p[1])-1]+' '+Number(p[2]);}
+
+window.selectMonth=vi=>{selIdx=vi;render();};
+document.getElementById('prevM').onclick=()=>{selIdx--;render();};
+document.getElementById('nextM').onclick=()=>{selIdx++;render();};
+document.getElementById('todayBtn').onclick=()=>{selIdx=curIdx();render();};
+window.toggleAdd=sect=>{addOpen[sect]=!addOpen[sect];renderSections();};
+window.setEditType=v=>{editTypeTmp=v;renderSections();};
+window.addItem=sect=>{
+  const name=document.getElementById('af_name').value.trim();if(!name)return;
+  const amount=Number(document.getElementById('af_amt').value)||0;
+  let it={id:uid(),name,amount,on:true};
+  if(sect==='recurring'){it.day=Number(document.getElementById('af_day').value)||null;it.variable=document.getElementById('af_type').value==='varies';it.months={};const st=document.getElementById('af_start');if(st&&st.value)it.start=st.value;}
+  else{it.date=document.getElementById('af_date').value||'';const lv=document.getElementById('af_left').value;it.left=lv===''?'':Number(lv);}
+  S[sect].push(it);addOpen[sect]=false;save();render();
+};
+window.startEdit=(sect,id)=>{editing={sect,id};editTypeTmp=null;renderSections();};
+window.toggleOn=(sect,id)=>{const it=S[sect].find(x=>x.id===id);if(!it)return;it.on=it.on===false?true:false;save();render();};
+window.cancelEdit=()=>{editing={sect:null,id:null};editTypeTmp=null;renderSections();};
+window.commitEdit=(sect,id)=>{
+  const it=S[sect].find(x=>x.id===id);if(!it)return;
+  it.name=document.getElementById('ed_name').value||it.name;
+  if(sect==='recurring'){
+    it.day=Number(document.getElementById('ed_day').value)||null;
+    const varies=editTypeTmp!=null?editTypeTmp==='varies':it.variable;
+    it.variable=varies;
+    if(varies){
+      it.amount=Number(document.getElementById('ed_est').value)||0;
+      if(!it.months)it.months={};
+      const key=ymKey(selIdx),av=document.getElementById('ed_actual').value;
+      if(av==='')delete it.months[key];else it.months[key]=Number(av)||0;
+    }else it.amount=Number(document.getElementById('ed_amt').value)||0;
+  }else{
+    it.amount=Number(document.getElementById('ed_amt').value)||0;
+    it.date=document.getElementById('ed_date').value||'';
+    const lv=document.getElementById('ed_left').value;it.left=lv===''?'':Number(lv);
+  }
+  editing={sect:null,id:null};editTypeTmp=null;save();render();
+};
+window.del=(sect,id)=>{S[sect]=S[sect].filter(x=>x.id!==id);save();render();};
+let inT;document.getElementById('income').oninput=e=>{S.income=Number(e.target.value)||0;clearTimeout(inT);inT=setTimeout(()=>{save();render();},400);};
+document.getElementById('exportBtn').onclick=()=>{const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='cashflow.json';a.click();};
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{const obj=JSON.parse(rd.result);S=normalize(obj);document.getElementById('income').value=S.income||'';save();render();}catch(err){alert('Could not read that file — make sure it is a cashflow JSON export.');}};
+  rd.readAsText(f);e.target.value='';
+};
+
+load();
+</script>
