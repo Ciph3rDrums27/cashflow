@@ -1,6 +1,6 @@
 # Cashflow Forecast
 
-A privacy-first personal cashflow forecaster. Single HTML file, no backend, no dependencies, no tracking — your financial data never leaves your device.
+A privacy-first personal cashflow forecaster. Single HTML file, no backend, no dependencies, no tracking. Your financial data never leaves your device.
 
 ![status](https://img.shields.io/badge/data-stays%20local-success) ![deps](https://img.shields.io/badge/dependencies-none-blue) ![offline](https://img.shields.io/badge/offline-yes-brightgreen)
 
