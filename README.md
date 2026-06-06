@@ -8,12 +8,12 @@ A privacy-first personal cashflow forecaster. Single HTML file, no backend, no d
 
 ## What it is
 
-A self-contained web app for forecasting month-to-month cashflow when your obligations are fragmented across loans, leases, installment plans (Affirm / BNPL), credit-card balances, and variable bills. It answers two questions most budgeting apps don't:
+A self-contained web app for forecasting month-to-month cashflow when your obligations are fragmented across loans, leases, installment plans, credit-card balances, and variable bills. It answers two questions most budgeting apps don't:
 
 - **"What will actually be left after everything clears my account this month?"**
 - **"When does my monthly load drop, and which debt should I attack first?"**
 
-It runs as a single `index.html` you can open locally, host on GitHub Pages, or serve to your phone over a private network. There is no server, no account, and no database — all state lives in your browser.
+It runs as a single `index.html` you can open locally, host on GitHub Pages, or serve to your phone over a private network. There is no server, no account, and no database. All state lives in your browser.
 
 ## Why it exists
 
@@ -37,15 +37,15 @@ This is the point of the project, not an afterthought:
 
 - **No backend.** Nothing is transmitted anywhere. There is no server to breach.
 - **No third-party code.** No CDNs, no web fonts, no analytics, no trackers. The app makes zero outbound network requests and runs fully offline using your device's native fonts.
-- **Data is local-only.** All state is stored in the browser's `localStorage`, scoped to the origin serving the app. The published code contains only sample data — it does not contain anyone's finances.
+- **Data is local-only.** All state is stored in the browser's `localStorage`, scoped to the origin serving the app. The published code contains only sample data. It does not contain anyone's finances.
 - **No secrets.** The source holds no keys or credentials, so hosting it publicly leaks nothing.
 - **You own the data lifecycle.** Export to a JSON file you control; import to restore. Backups are yours to encrypt and store as you see fit.
 
 ### Threat model & caveats (read before deploying publicly)
 
-- **Same-origin storage on shared hosts.** `localStorage` is scoped by origin, not path. On GitHub Pages, every project under `username.github.io` shares one origin — so other pages you host there could read this app's storage. Host on a **dedicated custom domain** (or a separate account) to isolate it.
+- **Same-origin storage on shared hosts.** `localStorage` is scoped by origin, not path. On GitHub Pages, every project under `username.github.io` shares one origin, so other pages you host there could read this app's storage. Host on a **dedicated custom domain** (or a separate account) to isolate it.
 - **Device security is the boundary.** The app has no passcode; anyone with your unlocked device can open it. Rely on full-disk encryption (FileVault) and device lock.
-- **Never commit real data.** Keep exported JSON out of the repository — see `.gitignore`. Committed data would be public and preserved in git history.
+- **Never commit real data.** Keep exported JSON out of the repository, see `.gitignore`. Committed data would be public and preserved in git history.
 - **Storage can be evicted.** Browsers may purge `localStorage` for idle sites. Keep periodic JSON exports as your authoritative backup.
 
 ## Getting started
@@ -58,7 +58,7 @@ This is the point of the project, not an afterthought:
 
 ## Data, backup & multi-device
 
-Data is stored per-browser and per-origin — it does **not** sync automatically between devices (by design, since nothing passes through a server). To move data between, say, a laptop and a phone:
+Data is stored per-browser and per-origin, it does **not** sync automatically between devices (by design, since nothing passes through a server). To move data between, say, a laptop and a phone:
 
 1. **Export JSON** on the device with current data.
 2. Move the file (AirDrop, cloud drive, etc.).
