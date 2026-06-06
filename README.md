@@ -21,7 +21,7 @@ Fragmented autopay dates across many creditors make the cumulative monthly outfl
 
 ## Features
 
-- **Four expense ledgers** — recurring bills, Affirm/BNPL installments, credit-card installment plans, and recurring card charges. Installments decrement automatically and drop off the month after their final payment.
+- **Four expense ledgers** — recurring bills, fixed installments, credit-card installment plans, and recurring card charges. Installments decrement automatically and drop off the month after their final payment.
 - **Cash vs. credit separation** — money that leaves your checking (bills + ACH installments + your card payment) is tracked separately from spend that accrues to a card balance, so "remaining cash" reflects reality.
 - **12-month projection** — a stacked forecast with your take-home as a reference line and the remaining-cash gap shown per month. Click any month to inspect it.
 - **Variable bills** — categories like groceries, gas, and utilities carry an estimate for forecasting plus a per-month actual you log as bills land.
