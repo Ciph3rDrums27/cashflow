@@ -617,7 +617,7 @@ function renderProjection(){
     const ym=idxToYM(drop.vi);
     const installs=[...S.affirm,...S.ccplans];
     const ending=installs.filter(it=>{const st=parseStart(it.date);return st!=null&&it.left!==''&&it.left!=null&&st+Number(it.left)-1===drop.vi-1;}).map(it=>it.name);
-    el.innerHTML=`Biggest relief: expenses drop <strong>${fmt0(drop.amt)}/mo</strong> starting <strong>${MONL[ym.m]} ${ym.y}</strong>${ending.length?' as '+ending.join(' & ')+' clear'+(ending.length>1?'':'s'):''}.`;
+    el.innerHTML=`Biggest relief: expenses drop <strong>${fmt0(drop.amt)}/mo</strong> starting <strong>${MONL[ym.m]} ${ym.y}</strong>${ending.length?' as '+ending.map(esc).join(' &amp; ')+' clear'+(ending.length>1?'':'s'):''}.`;
   }else el.innerHTML='Add installment plans with payments-left to see when your monthly load drops.';
 }
 
@@ -827,7 +827,7 @@ function addFormHTML(sect){
   return `<div class="addrow" style="grid-template-columns:1.4fr 1fr .9fr .9fr auto"><input id="af_name" placeholder="${namePh}"><input id="af_date" type="date"><input id="af_left" type="number" min="0" placeholder="${leftPh}"><input id="af_amt" class="mono" type="number" placeholder="Amount"><button class="btn" onclick="addItem('${sect}')">Save</button></div>`;
 }
 
-function esc(s){return String(s).replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmtDate(d){const p=d.split('-');return MON[Number(p[1])-1]+' '+Number(p[2]);}
 
 window.selectMonth=vi=>{selIdx=vi;render();};
