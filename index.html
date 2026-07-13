@@ -696,8 +696,12 @@ function renderProjection(){
   const el=document.getElementById('insight');
   if(drop.vi!=null&&drop.amt>1){
     const ym=idxToYM(drop.vi);
-    const installs=[...S.affirm,...S.ccplans];
-    const ending=installs.filter(it=>{const st=parseStart(it.date);return st!=null&&it.left!==''&&it.left!=null&&st+Number(it.left)-1===drop.vi-1;}).map(it=>it.name);
+    // Anything with a start+left window (affirm/ccplans installments, and card items set up the same way)
+    // ends the month its last payment lands in; one-time payments end right after their single active month.
+    const installs=[...S.affirm,...S.ccplans,...S.card];
+    const endingInstalls=installs.filter(it=>{const st=parseStart(it.date);return st!=null&&it.left!==''&&it.left!=null&&st+Number(it.left)-1===drop.vi-1;}).map(it=>it.name);
+    const endingOneoffs=(S.oneoff||[]).filter(it=>{const st=parseStart(it.date);return st!=null&&st===drop.vi-1;}).map(it=>it.name);
+    const ending=[...endingInstalls,...endingOneoffs];
     el.innerHTML=`Biggest relief: expenses drop <strong>${fmt0(drop.amt)}/mo</strong> starting <strong>${MONL[ym.m]} ${ym.y}</strong>${ending.length?' as '+ending.map(esc).join(' &amp; ')+' clear'+(ending.length>1?'':'s'):''}.`;
   }else el.innerHTML='Add installment plans with payments-left to see when your monthly load drops.';
 }
