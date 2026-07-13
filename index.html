@@ -42,7 +42,11 @@
   .card.accent .big{color:var(--gold)}
   .card.left .big{color:var(--income)} .card.left.neg .big{color:var(--card)}
 
-  .charts{display:grid;grid-template-columns:1.55fr .95fr;gap:16px;margin-bottom:14px}
+  .charts{display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:14px}
+  .projwrap{position:relative}
+  .projtip{position:absolute;display:none;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.45);z-index:20;min-width:175px}
+  .projtip .pt-title{font-family:ui-serif,'New York',Georgia,'Times New Roman',serif;font-size:13px;color:var(--ink);margin-bottom:6px}
+  .projtip .legend{font-size:11.5px;gap:5px}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
   .panel h2{font-family:ui-serif,'New York',Georgia,'Times New Roman',serif;font-size:17px;margin:0 0 4px;font-weight:600}
   .panel .ph{color:var(--mute);font-size:12px;margin:0 0 12px}
@@ -57,7 +61,7 @@
   .legend .pd{width:9px;height:9px;border-radius:3px}
   .legend .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;color:var(--mute)}
 
-  @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}}
+  @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}}
 
   .section{margin-top:16px}
   .sechead{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px}
@@ -180,8 +184,8 @@
   <div class="charts">
     <div class="panel">
       <h2>12-month projection</h2>
-      <p class="ph">Wide bar = cash leaving checking (recurring + installments + Pay in 4); green cap = take-home left. Narrow bar = spend billed to your credit card, shown separately. Click a bar to jump to that month.</p>
-      <div id="proj"></div>
+      <p class="ph">Wide bar = cash leaving checking (recurring + installments + Pay in 4); green cap = take-home left. Narrow bar = spend billed to your credit card, shown separately. Hover a bar for the breakdown, click to jump to that month.</p>
+      <div class="projwrap"><div id="proj"></div><div id="projTip" class="projtip"></div></div>
       <div class="chartlegend">
         <span><span class="pd" style="background:var(--recur)"></span>Recurring (cash)</span>
         <span><span class="pd" style="background:var(--affirm)"></span>Installments (cash)</span>
@@ -638,12 +642,47 @@ function renderCards(){
   ].join('');
 }
 
+let PROJDATA=[];
+function projHover(evt,vi){
+  const d=PROJDATA.find(x=>x.vi===vi);if(!d)return;
+  const ym=idxToYM(vi);
+  const rows=[
+    ['Recurring',d.recurring,'#7fa0c4'],
+    ['Installments',d.affirm,'#a98bc0'],
+    ['Pay in 4',d.payin4,'#c9a24e'],
+    ['One-time',d.oneoff,'#d98ca6'],
+    ['Card payments',d.pay,'#6aa9a0'],
+    ['CC plans',d.ccplans,'#6aa9a0'],
+    ['Card charges',d.card,'#d77866'],
+  ].filter(r=>r[1]>0);
+  let html=`<div class="pt-title">${MONL[ym.m]} ${ym.y}</div><div class="legend">`;
+  rows.forEach(([nm,v,col])=>{html+=`<div class="li"><span class="nm"><span class="pd" style="background:${col}"></span>${nm}</span><span class="vl">${fmt0(v)}</span></div>`;});
+  html+=`<div class="li" style="border-top:1px solid var(--line);margin-top:3px;padding-top:4px"><span class="nm" style="color:var(--ink);font-weight:600">Total</span><span class="vl" style="color:var(--ink);font-weight:600">${fmt0(d.total)}</span></div>`;
+  if(d.inc>0){const rem=d.inc-d.checking;html+=`<div class="li"><span class="nm" style="color:${rem<0?'var(--card)':'var(--income)'}">${rem<0?'Over take-home':'Cash remaining'}</span><span class="vl" style="color:${rem<0?'var(--card)':'var(--income)'}">${fmt0(Math.abs(rem))}</span></div>`;}
+  html+='</div>';
+  const tip=document.getElementById('projTip');
+  tip.innerHTML=html;
+  tip.style.display='block';
+  projMove(evt);
+}
+function projMove(evt){
+  const tip=document.getElementById('projTip'),wrap=tip.parentElement;
+  if(tip.style.display!=='block')return;
+  const r=wrap.getBoundingClientRect();
+  let x=evt.clientX-r.left+14, y=evt.clientY-r.top+14;
+  const tw=tip.offsetWidth||175;
+  if(x+tw>wrap.clientWidth)x=evt.clientX-r.left-tw-14;
+  tip.style.left=Math.max(0,x)+'px';
+  tip.style.top=y+'px';
+}
+function projHoverOut(){document.getElementById('projTip').style.display='none';}
 function renderProjection(){
   const base=curIdx()-1,N=12;
   const data=[];
   for(let k=0;k<N;k++){const vi=base+k;const sums={};SECTKEYS.forEach(s=>sums[s]=sectionSum(s,vi));
     sums.pay=cardPaymentTotal();
     sums.checking=sums.recurring+sums.affirm+sums.payin4+sums.oneoff+sums.pay; sums.card_=sums.ccplans+sums.card; sums.total=sums.checking+sums.card_; sums.vi=vi; sums.inc=incomeFor(vi); data.push(sums);}
+  PROJDATA=data;
   const checkingArr=data.map(d=>d.checking), cardArr=data.map(d=>d.card_), incArr=data.map(d=>d.inc);
   const maxV=Math.max(...checkingArr,...cardArr,...incArr,1)*1.12;
   const W=720,H=300,padL=10,padR=10,padB=30,padT=16;
@@ -674,7 +713,7 @@ function renderProjection(){
     const ym=idxToYM(d.vi);
     svg+=`<text x="${gx+groupW/2}" y="${H-padB+14}" fill="${sel?'#f1ebe3':'#6b6258'}" font-size="10" text-anchor="middle">${MON[ym.m]}</text>`;
     if(ym.m===0)svg+=`<text x="${gx+groupW/2}" y="${H-padB+25}" fill="#6b6258" font-size="8" text-anchor="middle">'${String(ym.y).slice(2)}</text>`;
-    svg+=`<rect x="${padL+slot*k}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" style="cursor:pointer" onclick="selectMonth(${d.vi})"/>`;
+    svg+=`<rect x="${padL+slot*k}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" style="cursor:pointer" onclick="selectMonth(${d.vi})" onmouseenter="projHover(event,${d.vi})" onmousemove="projMove(event)" onmouseleave="projHoverOut()"/>`;
   });
   // stepped take-home line: one flat segment per month so overrides read as distinct steps, not a slope
   if(data.some(d=>d.inc>0)){
@@ -696,8 +735,12 @@ function renderProjection(){
   const el=document.getElementById('insight');
   if(drop.vi!=null&&drop.amt>1){
     const ym=idxToYM(drop.vi);
-    const installs=[...S.affirm,...S.ccplans];
-    const ending=installs.filter(it=>{const st=parseStart(it.date);return st!=null&&it.left!==''&&it.left!=null&&st+Number(it.left)-1===drop.vi-1;}).map(it=>it.name);
+    // Anything with a start+left window (affirm/ccplans installments, and card items set up the same way)
+    // ends the month its last payment lands in; one-time payments end right after their single active month.
+    const installs=[...S.affirm,...S.ccplans,...S.card];
+    const endingInstalls=installs.filter(it=>{const st=parseStart(it.date);return st!=null&&it.left!==''&&it.left!=null&&st+Number(it.left)-1===drop.vi-1;}).map(it=>it.name);
+    const endingOneoffs=(S.oneoff||[]).filter(it=>{const st=parseStart(it.date);return st!=null&&st===drop.vi-1;}).map(it=>it.name);
+    const ending=[...endingInstalls,...endingOneoffs];
     el.innerHTML=`Biggest relief: expenses drop <strong>${fmt0(drop.amt)}/mo</strong> starting <strong>${MONL[ym.m]} ${ym.y}</strong>${ending.length?' as '+ending.map(esc).join(' &amp; ')+' clear'+(ending.length>1?'':'s'):''}.`;
   }else el.innerHTML='Add installment plans with payments-left to see when your monthly load drops.';
 }
