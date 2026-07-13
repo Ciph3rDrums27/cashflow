@@ -730,8 +730,11 @@ function renderProjection(){
   document.getElementById('proj').innerHTML=svg;
 
   const totals=data.map(d=>d.total);
+  // Only look at drops from the month currently being viewed onward, so paging forward
+  // past a relief that already happened surfaces the next one instead of repeating stale news.
+  const searchFrom=Math.max(selIdx,data[0].vi);
   let drop={amt:0,vi:null};
-  for(let k=1;k<N;k++){const d=totals[k-1]-totals[k];if(d>drop.amt)drop={amt:d,vi:data[k].vi};}
+  for(let k=1;k<N;k++){if(data[k].vi<searchFrom)continue;const d=totals[k-1]-totals[k];if(d>drop.amt)drop={amt:d,vi:data[k].vi};}
   const el=document.getElementById('insight');
   if(drop.vi!=null&&drop.amt>1){
     const ym=idxToYM(drop.vi);
