@@ -140,7 +140,7 @@
   .chip .pd{width:8px;height:8px;border-radius:3px}
   .chip .nm{font-size:13px}
   .chip .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--mute)}
-  .ccbrow{display:grid;grid-template-columns:1.2fr .8fr .55fr .8fr .8fr auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+  .ccbrow{display:grid;grid-template-columns:1.1fr .7fr .5fr .7fr .7fr .7fr auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
   .ccbrow:last-of-type{border-bottom:none}
   .ccbrow .lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);display:block;margin-bottom:3px}
   .ccbrow input{width:100%}
@@ -397,7 +397,7 @@ function normalize(s){
   s.recurring.forEach(it=>{if(it.variable===undefined)it.variable=false;if(!it.months||typeof it.months!=='object')it.months={};});
   (s.payin4||[]).forEach(it=>{it.count=Number(it.count)||4;it.every=Number(it.every)||7;});
   if(!Array.isArray(s.ccBalances))s.ccBalances=[];
-  s.ccBalances.forEach(c=>{if(!c.id)c.id=uid();c.balance=Number(c.balance)||0;c.apr=Number(c.apr)||0;c.payment=Number(c.payment)||0;if(!c.name)c.name='Card';});
+  s.ccBalances.forEach(c=>{if(!c.id)c.id=uid();c.balance=Number(c.balance)||0;c.apr=Number(c.apr)||0;c.payment=Number(c.payment)||0;if(!c.name)c.name='Card';if(!c.payMonths||typeof c.payMonths!=='object')c.payMonths={};});
   return s;
 }
 function migrateV2(s){ // v2 had no ccplans and possibly no variable fields
@@ -436,8 +436,13 @@ async function load(){
   document.getElementById('income').value=S.income||'';
   render();
 }
-function cardPaymentTotal(){return (S.ccBalances||[]).reduce((s,c)=>s+(Number(c.payment)||0),0);}
-function updateCardPayHeader(){const el=document.getElementById('cardpayTot');if(el)el.textContent=fmt0(cardPaymentTotal());}
+function cardPayFor(c,vi){
+  const key=ymKey(vi);
+  const ov=c.payMonths&&c.payMonths[key];
+  return ov!=null?Number(ov):(Number(c.payment)||0);
+}
+function cardPaymentTotal(vi){return (S.ccBalances||[]).reduce((s,c)=>s+cardPayFor(c,vi),0);}
+function updateCardPayHeader(){const el=document.getElementById('cardpayTot');if(el)el.textContent=fmt0(cardPaymentTotal(selIdx));}
 async function save(){try{await store.set(KEY,JSON.stringify(S));flash();}catch(e){console.error(e);}}
 function flash(){const f=document.getElementById('savedFlag');f.classList.add('show');setTimeout(()=>f.classList.remove('show'),1100);}
 
@@ -626,7 +631,7 @@ function renderHeader(){
 
 function renderCards(){
   const a=sectionSum('affirm',selIdx),p4=sectionSum('payin4',selIdx),cp=sectionSum('ccplans',selIdx),r=sectionSum('recurring',selIdx),cc=sectionSum('card',selIdx),oo=sectionSum('oneoff',selIdx);
-  const pay=cardPaymentTotal();
+  const pay=cardPaymentTotal(selIdx);
   const checking=r+a+p4+oo+pay;      // leaves your bank: recurring + installments + Pay in 4 (ACH) + one-time cash + card payments
   const cardSpend=cp+cc;          // accrues to card balance: CC plans + charges (tracked here)
   const inc=incomeFor(selIdx),left=inc-checking;
@@ -680,7 +685,7 @@ function renderProjection(){
   const base=curIdx()-1,N=12;
   const data=[];
   for(let k=0;k<N;k++){const vi=base+k;const sums={};SECTKEYS.forEach(s=>sums[s]=sectionSum(s,vi));
-    sums.pay=cardPaymentTotal();
+    sums.pay=cardPaymentTotal(vi);
     sums.checking=sums.recurring+sums.affirm+sums.payin4+sums.oneoff+sums.pay; sums.card_=sums.ccplans+sums.card; sums.total=sums.checking+sums.card_; sums.vi=vi; sums.inc=incomeFor(vi); data.push(sums);}
   PROJDATA=data;
   const checkingArr=data.map(d=>d.checking), cardArr=data.map(d=>d.card_), incArr=data.map(d=>d.inc);
@@ -772,14 +777,18 @@ function renderDonut(){
 function renderSections(){document.getElementById('sections').innerHTML=SECTKEYS.map(sectionHTML).join('');}
 
 function renderCardBalances(){
-  const rows=S.ccBalances.map(c=>`<div class="ccbrow">
+  const key=ymKey(selIdx), mLabel=MON[idxToYM(selIdx).m];
+  const rows=S.ccBalances.map(c=>{
+    const hasOv=c.payMonths&&c.payMonths[key]!=null;
+    return `<div class="ccbrow">
     <div><span class="lab">Card</span><input value="${esc(c.name)}" oninput="ccbInput('${c.id}','name',this.value)"></div>
     <div><span class="lab">Balance $</span><input class="mono" type="number" inputmode="decimal" value="${c.balance||''}" placeholder="0" oninput="ccbInput('${c.id}','balance',this.value)"></div>
     <div><span class="lab">APR %</span><input class="mono" type="number" inputmode="decimal" value="${c.apr||''}" placeholder="0" oninput="ccbInput('${c.id}','apr',this.value)"></div>
     <div><span class="lab" style="color:var(--ccplan)">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" oninput="ccbInput('${c.id}','payment',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan)">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${hasOv?c.payMonths[key]:''}" placeholder="${c.payment||0}" oninput="ccbMonthInput('${c.id}',this.value)"></div>
     <div><span class="lab">Interest/mo</span><span class="intv" id="ccbint_${c.id}">$0.00</span></div>
     <div style="text-align:right"><button class="icon-btn" title="remove" onclick="ccbDel('${c.id}')">🗑</button></div>
-  </div>`).join('')||'<div class="empty">No cards yet — add a credit card to track its balance and payoff.</div>';
+  </div>`;}).join('')||'<div class="empty">No cards yet — add a credit card to track its balance and payoff.</div>';
   document.getElementById('ccBalRows').innerHTML=rows;
   ccbRecalc();
 }
@@ -796,7 +805,7 @@ function ccbRecalc(){
   S.ccBalances.forEach(c=>{
     const i=(Number(c.balance)||0)*(Number(c.apr)||0)/100/12;
     const span=document.getElementById('ccbint_'+c.id); if(span)span.textContent=fmt(i);
-    totB+=Number(c.balance)||0; totI+=i; totP+=Number(c.payment)||0;
+    totB+=Number(c.balance)||0; totI+=i; totP+=cardPayFor(c,selIdx);
   });
   updateCardPayHeader();
   document.getElementById('ccBalTot').innerHTML=`${fmt(totB)} balance · ${fmt(totI)}/mo interest · ${fmt(totP)}/mo paid`;
@@ -829,7 +838,15 @@ window.ccbInput=(id,field,val)=>{
   if(field==='payment'){renderCards();renderProjection();}
   clearTimeout(ccbT);ccbT=setTimeout(save,400);
 };
-window.ccbAdd=()=>{S.ccBalances.push({id:uid(),name:'Card',balance:0,apr:0,payment:0});save();renderCardBalances();};
+window.ccbMonthInput=(id,val)=>{
+  const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
+  const key=ymKey(selIdx);
+  if(!c.payMonths)c.payMonths={};
+  if(val==='')delete c.payMonths[key];else c.payMonths[key]=Number(val)||0;
+  ccbRecalc();renderCards();renderProjection();
+  clearTimeout(ccbT);ccbT=setTimeout(save,400);
+};
+window.ccbAdd=()=>{S.ccBalances.push({id:uid(),name:'Card',balance:0,apr:0,payment:0,payMonths:{}});save();renderCardBalances();};
 window.ccbDel=(id)=>{S.ccBalances=S.ccBalances.filter(x=>x.id!==id);save();renderCardBalances();renderCards();renderProjection();};
 function sectionHTML(sect){
   const cfg=SECT[sect],tot=sectionSum(sect,selIdx),m=MON[idxToYM(selIdx).m];
