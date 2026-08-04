@@ -19,6 +19,7 @@
   .navmonth .mlabel{font-family:ui-serif,'New York',Georgia,'Times New Roman',serif;font-size:20px;min-width:150px;text-align:center}
   .navmonth .mlabel small{display:block;font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);margin-top:1px}
   .navmonth .future{color:var(--gold)}.navmonth .past{color:var(--mute)}
+  .ovr-dot{display:none;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-left:6px;vertical-align:middle}
   .income-box{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mute)}
   .income-box input{width:110px}
   input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;font-size:13px;outline:none}
@@ -145,7 +146,7 @@
   .ccbrow .lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);display:block;margin-bottom:3px}
   .ccbrow input{width:100%}
   .ccbrow .intv{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--card)}
-  @media(max-width:760px){.ccbrow{grid-template-columns:1fr 1fr 1fr}}
+  @media(max-width:760px){.ccbrow{grid-template-columns:1fr 1fr 1fr}.ccbrow>div:last-child{grid-column:1/-1;text-align:right;margin-top:2px}}
 </style>
 
 <div class="wrap">
@@ -156,7 +157,7 @@
     </div>
     <div class="navmonth">
       <button class="nbtn" id="prevM">‹</button>
-      <div class="mlabel" id="mlabel">—<small id="msub"></small></div>
+      <div class="mlabel" id="mlabel">—<small id="msub"></small><span class="ovr-dot" id="mOvrDot"></span></div>
       <button class="nbtn" id="nextM">›</button>
       <button class="today-btn" id="todayBtn">Today</button>
     </div>
@@ -211,9 +212,17 @@
 
   <div class="panel" id="ccBalPanel" style="margin-top:16px">
     <div class="sechead"><div class="tt"><span class="pd" style="background:var(--card)"></span>Credit card balances</div><div class="sectot" id="ccBalTot"></div></div>
-    <p class="ph" style="margin-top:0">Enter each card's balance, APR, and the payment you make to <em>that</em> card. The summary ranks them by APR and shows a real payoff per card; the total payment feeds your cash outflow up top.</p>
+    <p class="ph" style="margin-top:0">Enter each card's balance, APR, and the payment you make to <em>that</em> card. The summary ranks them by your chosen payoff strategy and shows a real payoff per card; the total payment feeds your cash outflow up top.</p>
+    <p class="ph">"Payment $/mo" is your normal monthly payment. The second field next to it only applies to the month you're currently viewing — use it to log a payment that's higher or lower than usual without changing your baseline; leave it blank to fall back to your normal amount. Payoff estimates always use your normal payment, so one lighter or heavier month won't skew them.</p>
     <div id="ccBalRows"></div>
     <div style="margin-top:10px"><button class="btn" onclick="ccbAdd()">+ Add card</button></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px">Payoff strategy</span>
+      <div class="seg" id="payoffStratSeg">
+        <button id="stratAvalanche" class="active" onclick="setPayoffStrategy('avalanche')" title="Attack the highest-APR balance first — minimizes total interest paid">Avalanche</button>
+        <button id="stratSnowball" onclick="setPayoffStrategy('snowball')" title="Attack the smallest balance first — faster wins, can be easier to stick with">Snowball</button>
+      </div>
+    </div>
     <div class="insight" id="ccBalSummary" style="border-left-color:var(--card)"></div>
   </div>
 
@@ -528,8 +537,13 @@ window.setView=v=>{
 };
 window.setHalf=h=>{half=h;document.getElementById('h1btn').classList.toggle('active',h===1);document.getElementById('h2btn').classList.toggle('active',h===2);renderCalendar();};
 
-function dayOf(it,sect){
+function dayOf(it,sect,vi){
   if(sect==='recurring')return (it.day==null?null:Number(it.day));
+  if(sect==='payin4'){
+    const {y,m}=idxToYM(vi!=null?vi:selIdx);
+    const days=payin4Dates(it).filter(d=>d.getFullYear()===y&&d.getMonth()===m).map(d=>d.getDate());
+    return days.length?Math.min(...days):null;
+  }
   if(it.date){return Number(it.date.split('-')[2]);}
   return null;
 }
@@ -620,6 +634,13 @@ function renderTimeline(items){
   document.getElementById('timeline').innerHTML=svg;
 }
 
+function monthOverrides(vi){
+  const key=ymKey(vi),out=[];
+  if(S.incomeMonths&&S.incomeMonths[key]!=null)out.push('take-home override');
+  if((S.ccBalances||[]).some(c=>c.payMonths&&c.payMonths[key]!=null))out.push('card payment override');
+  if((S.recurring||[]).some(it=>it.variable&&it.months&&it.months[key]!=null))out.push('bill amount override');
+  return out;
+}
 function renderHeader(){
   const {y,m}=idxToYM(selIdx),c=curIdx();
   document.getElementById('mlabel').firstChild.textContent=MONL[m]+' '+y;
@@ -627,6 +648,11 @@ function renderHeader(){
   if(selIdx>c){sub.textContent='forecast +'+(selIdx-c)+'mo';sub.className='future';}
   else if(selIdx<c){sub.textContent='past '+(c-selIdx)+'mo';sub.className='past';}
   else{sub.textContent='this month';sub.className='';}
+  const overrides=monthOverrides(selIdx),dot=document.getElementById('mOvrDot');
+  if(dot){
+    dot.style.display=overrides.length?'inline-block':'none';
+    dot.title=overrides.length?('This month has: '+overrides.join(', ')):'';
+  }
 }
 
 function renderCards(){
@@ -784,8 +810,8 @@ function renderCardBalances(){
     <div><span class="lab">Card</span><input value="${esc(c.name)}" oninput="ccbInput('${c.id}','name',this.value)"></div>
     <div><span class="lab">Balance $</span><input class="mono" type="number" inputmode="decimal" value="${c.balance||''}" placeholder="0" oninput="ccbInput('${c.id}','balance',this.value)"></div>
     <div><span class="lab">APR %</span><input class="mono" type="number" inputmode="decimal" value="${c.apr||''}" placeholder="0" oninput="ccbInput('${c.id}','apr',this.value)"></div>
-    <div><span class="lab" style="color:var(--ccplan)">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" oninput="ccbInput('${c.id}','payment',this.value)"></div>
-    <div><span class="lab" style="color:var(--ccplan)">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${hasOv?c.payMonths[key]:''}" placeholder="${c.payment||0}" oninput="ccbMonthInput('${c.id}',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan)">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" title="Your normal monthly payment to this card. Used every month by default, and always used for the payoff estimate below." oninput="ccbInput('${c.id}','payment',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan)">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${hasOv?c.payMonths[key]:''}" placeholder="${c.payment||0}" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Doesn't affect the payoff estimate." oninput="ccbMonthInput('${c.id}',this.value)"></div>
     <div><span class="lab">Interest/mo</span><span class="intv" id="ccbint_${c.id}">$0.00</span></div>
     <div style="text-align:right"><button class="icon-btn" title="remove" onclick="ccbDel('${c.id}')">🗑</button></div>
   </div>`;}).join('')||'<div class="empty">No cards yet — add a credit card to track its balance and payoff.</div>';
@@ -814,7 +840,9 @@ function ccbRecalc(){
   let html;
   if(!active.length){html='Enter a balance, APR, and a monthly payment per card to see payoff times and which card to attack first.';}
   else{
-    const ranked=[...active].sort((a,b)=>(Number(b.apr)||0)-(Number(a.apr)||0));
+    const ranked=[...active].sort((a,b)=>payoffStrategy==='snowball'
+      ?(Number(a.balance)||0)-(Number(b.balance)||0)
+      :(Number(b.apr)||0)-(Number(a.apr)||0));
     const target=ranked[0];
     const lines=ranked.map(c=>{
       const po=payoffOf(Number(c.balance),Number(c.apr),Number(c.payment));
@@ -824,12 +852,22 @@ function ccbRecalc(){
       else t=`paid off ~<strong>${po.n}mo</strong>, ~${fmt0(po.paid)} interest`;
       return `<div style="margin:2px 0">• <strong>${esc(c.name)}</strong> — ${fmt0(c.balance)} at ${(Number(c.apr)||0).toFixed(2)}%, ${fmt0(c.payment)}/mo → ${t}</div>`;
     }).join('');
-    const avalanche=`<div style="margin-top:8px"><strong>Avalanche:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${(Number(target.apr)||0).toFixed(2)}% — your most expensive). Clear it, then roll its payment onto the next-highest APR.</div>`;
+    const strat=payoffStrategy==='snowball'
+      ?`<div style="margin-top:8px"><strong>Snowball:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${fmt0(target.balance)} — your smallest balance, for a quick win). Clear it, then roll its payment onto the next-smallest balance.</div>`
+      :`<div style="margin-top:8px"><strong>Avalanche:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${(Number(target.apr)||0).toFixed(2)}% — your most expensive). Clear it, then roll its payment onto the next-highest APR.</div>`;
     const note=charging>0?`<div style="margin-top:6px;color:var(--mute)">You're charging ${fmt0(charging)}/mo in tracked plans + charges — that adds back to these balances if not paid off in full.</div>`:'';
-    html=`<div style="margin-bottom:6px">${fmt0(totB)} total at ${fmt0(totI)}/mo interest:</div>${lines}${avalanche}${note}`;
+    html=`<div style="margin-bottom:6px">${fmt0(totB)} total at ${fmt0(totI)}/mo interest:</div>${lines}${strat}${note}`;
   }
   document.getElementById('ccBalSummary').innerHTML=html;
 }
+let payoffStrategy='avalanche'; // in-memory preference (like view/half) — resets to avalanche on reload
+window.setPayoffStrategy=(s)=>{
+  payoffStrategy=s;
+  const a=document.getElementById('stratAvalanche'),b=document.getElementById('stratSnowball');
+  if(a)a.classList.toggle('active',s==='avalanche');
+  if(b)b.classList.toggle('active',s==='snowball');
+  ccbRecalc();
+};
 let ccbT;
 window.ccbInput=(id,field,val)=>{
   const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
@@ -847,13 +885,17 @@ window.ccbMonthInput=(id,val)=>{
   clearTimeout(ccbT);ccbT=setTimeout(save,400);
 };
 window.ccbAdd=()=>{S.ccBalances.push({id:uid(),name:'Card',balance:0,apr:0,payment:0,payMonths:{}});save();renderCardBalances();};
-window.ccbDel=(id)=>{S.ccBalances=S.ccBalances.filter(x=>x.id!==id);save();renderCardBalances();renderCards();renderProjection();};
+window.ccbDel=(id)=>{
+  const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
+  if(!confirm(`Delete "${c.name}"? This removes its balance, APR, and payment history — this can't be undone.`))return;
+  S.ccBalances=S.ccBalances.filter(x=>x.id!==id);save();renderCardBalances();renderCards();renderProjection();
+};
 function sectionHTML(sect){
   const cfg=SECT[sect],tot=sectionSum(sect,selIdx),m=MON[idxToYM(selIdx).m];
   const pausedN=S[sect].filter(x=>x.on===false).length;
   const pausedTxt=pausedN?` · <span style="color:var(--faint)">${pausedN} paused</span>`:'';
   const rows=[...S[sect]].sort((a,b)=>{
-    const da=dayOf(a,sect),db=dayOf(b,sect);
+    const da=dayOf(a,sect,selIdx),db=dayOf(b,sect,selIdx);
     if(da==null&&db==null)return 0;
     if(da==null)return 1;
     if(db==null)return -1;
@@ -1034,7 +1076,11 @@ window.commitEdit=(sect,id)=>{
   }
   editing={sect:null,id:null};editTypeTmp=null;save();render();
 };
-window.del=(sect,id)=>{S[sect]=S[sect].filter(x=>x.id!==id);save();render();};
+window.del=(sect,id)=>{
+  const it=S[sect].find(x=>x.id===id);if(!it)return;
+  if(!confirm(`Delete "${it.name}"? This can't be undone.`))return;
+  S[sect]=S[sect].filter(x=>x.id!==id);save();render();
+};
 let inT;document.getElementById('income').oninput=e=>{S.income=Number(e.target.value)||0;clearTimeout(inT);inT=setTimeout(()=>{save();render();},400);};
 let inOvT;document.getElementById('incOverride').oninput=e=>{
   const key=ymKey(selIdx),v=e.target.value;
