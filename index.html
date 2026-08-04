@@ -852,7 +852,13 @@ function sectionHTML(sect){
   const cfg=SECT[sect],tot=sectionSum(sect,selIdx),m=MON[idxToYM(selIdx).m];
   const pausedN=S[sect].filter(x=>x.on===false).length;
   const pausedTxt=pausedN?` · <span style="color:var(--faint)">${pausedN} paused</span>`:'';
-  const rows=[...S[sect]].sort((a,b)=>evalItem(b,sect,selIdx).amt-evalItem(a,sect,selIdx).amt).map(it=>rowHTML(sect,it)).join('')||`<tr><td colspan="5" class="empty">${emptyMsg(sect)}</td></tr>`;
+  const rows=[...S[sect]].sort((a,b)=>{
+    const da=dayOf(a,sect),db=dayOf(b,sect);
+    if(da==null&&db==null)return 0;
+    if(da==null)return 1;
+    if(db==null)return -1;
+    return da-db;
+  }).map(it=>rowHTML(sect,it)).join('')||`<tr><td colspan="5" class="empty">${emptyMsg(sect)}</td></tr>`;
   const ths=sect==='recurring'
     ?`<th>Item</th><th>Due day</th><th>Type</th><th class="amt">${m} $</th><th style="width:60px"></th>`
     :sect==='payin4'
