@@ -947,12 +947,17 @@ function renderProjection(){
     if(ym.m===0)svg+=`<text x="${gx+groupW/2}" y="${H-padB+25}" fill="var(--faint)" font-size="8" text-anchor="middle">'${String(ym.y).slice(2)}</text>`;
     svg+=`<rect x="${padL+slot*k}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" style="cursor:pointer" onclick="selectMonth(${d.vi})" onmouseenter="projHover(event,${d.vi})" onmousemove="projMove(event)" onmouseleave="projHoverOut()"/>`;
   });
-  // stepped take-home line: one flat segment per month so overrides read as distinct steps, not a slope
+  // stepped take-home line: one flat segment per month, connected by a right-angle
+  // riser (not a straight L, which would diagonally interpolate between differing
+  // months) so overrides read as distinct steps, not a slope.
   if(data.some(d=>d.inc>0)){
-    let path='';
+    let path='',prevY=null;
     data.forEach((d,k)=>{
       const gx=padL+slot*k+(slot-groupW)/2,y=yOf(d.inc);
-      path+=(k===0?'M':'L')+gx+' '+y+' L'+(gx+groupW)+' '+y+' ';
+      if(k===0)path='M'+gx+' '+y+' ';
+      else path+='L'+gx+' '+prevY+' L'+gx+' '+y+' ';
+      path+='L'+(gx+groupW)+' '+y+' ';
+      prevY=y;
     });
     svg+=`<path d="${path}" fill="none" stroke="var(--income)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
     const selD=data.find(d=>d.vi===selIdx);
