@@ -2,13 +2,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
-    --bg:#14110f;--panel:#1d1916;--panel2:#241f1b;--line:#332c26;
-    --ink:#f1ebe3;--mute:#9a8e80;--faint:#6b6258;
-    --affirm:#a98bc0;--ccplan:#6aa9a0;--recur:#7fa0c4;--card:#d77866;--income:#76b384;--gold:#e0a64e;--pay4:#c9a24e;--oneoff:#d98ca6;
+    --bg:#0c0e1a;--panel:#1a1f2e;--panel2:#232a3d;--line:#333c52;
+    --ink:#eef1f7;--mute:#9aa3b8;--faint:#7a8298;
+    --affirm:#8b6fd9;--ccplan:#2fa89c;--recur:#4a8fe0;--card:#c96a2e;--income:#3fae6a;--gold:#e3a83f;--pay4:#b8862e;--oneoff:#d9628f;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;
-    background-image:radial-gradient(circle at 18% -10%, #2a221c 0%, transparent 48%);min-height:100vh}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;min-height:100vh}
   .wrap{max-width:1120px;margin:0 auto;padding:26px 20px 90px}
   .mono{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace}
   header.top{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:22px}
@@ -147,7 +146,88 @@
   .ccbrow input{width:100%}
   .ccbrow .intv{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--card)}
   @media(max-width:760px){.ccbrow{grid-template-columns:1fr 1fr 1fr}.ccbrow>div:last-child{grid-column:1/-1;text-align:right;margin-top:2px}}
+  #bgscene{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
 </style>
+
+<svg id="bgscene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a0c17"/>
+      <stop offset="32%" stop-color="#1c1f3a"/>
+      <stop offset="60%" stop-color="#3d2f52"/>
+      <stop offset="82%" stop-color="#5c3f4a"/>
+      <stop offset="100%" stop-color="#78503c"/>
+    </linearGradient>
+    <radialGradient id="sunGlow" cx="50%" cy="100%" r="70%">
+      <stop offset="0%" stop-color="#e3a83f" stop-opacity=".85"/>
+      <stop offset="55%" stop-color="#e3a83f" stop-opacity=".18"/>
+      <stop offset="100%" stop-color="#e3a83f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="lakeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3d2f52" stop-opacity=".65"/>
+      <stop offset="35%" stop-color="#1c1f3a" stop-opacity=".8"/>
+      <stop offset="100%" stop-color="#0a0c17" stop-opacity=".97"/>
+    </linearGradient>
+    <pattern id="pines" width="46" height="90" patternUnits="userSpaceOnUse">
+      <polygon points="23,6 4,84 42,84" fill="#0d1a14"/>
+      <polygon points="23,26 11,84 35,84" fill="#122219"/>
+    </pattern>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="900" fill="url(#skyGrad)"/>
+
+  <g fill="#eef1f7">
+    <circle cx="90" cy="60" r="1.3" opacity=".7"/>
+    <circle cx="180" cy="110" r="1" opacity=".5"/>
+    <circle cx="260" cy="50" r="1.5" opacity=".8"/>
+    <circle cx="340" cy="140" r="1" opacity=".4"/>
+    <circle cx="410" cy="70" r="1.2" opacity=".6"/>
+    <circle cx="520" cy="40" r="1" opacity=".5"/>
+    <circle cx="610" cy="120" r="1.4" opacity=".7"/>
+    <circle cx="700" cy="80" r="1" opacity=".4"/>
+    <circle cx="980" cy="55" r="1.3" opacity=".7"/>
+    <circle cx="1080" cy="130" r="1" opacity=".5"/>
+    <circle cx="1170" cy="70" r="1.5" opacity=".8"/>
+    <circle cx="1260" cy="150" r="1" opacity=".4"/>
+    <circle cx="1350" cy="90" r="1.2" opacity=".6"/>
+    <circle cx="1460" cy="50" r="1" opacity=".5"/>
+    <circle cx="1540" cy="130" r="1.4" opacity=".7"/>
+  </g>
+
+  <circle cx="800" cy="560" r="280" fill="url(#sunGlow)"/>
+  <circle cx="800" cy="552" r="40" fill="#f0c876" opacity=".8"/>
+
+  <path d="M0,600 L80,520 L160,560 L260,470 L340,540 L440,460 L540,520 L650,440 L760,510 L860,450 L960,530 L1080,460 L1180,540 L1300,470 L1400,530 L1500,480 L1600,540 L1600,660 L0,660 Z" fill="#454a72" opacity=".5"/>
+  <g fill="#c9cdea" opacity=".55">
+    <path d="M65,538 L80,520 L95,538 Z"/>
+    <path d="M245,488 L260,470 L275,488 Z"/>
+    <path d="M425,478 L440,460 L455,478 Z"/>
+    <path d="M635,458 L650,440 L665,458 Z"/>
+    <path d="M845,468 L860,450 L875,468 Z"/>
+    <path d="M1065,478 L1080,460 L1095,478 Z"/>
+    <path d="M1285,488 L1300,470 L1315,488 Z"/>
+    <path d="M1485,498 L1500,480 L1515,498 Z"/>
+  </g>
+
+  <path d="M0,680 L120,540 L260,620 L400,500 L560,610 L720,490 L880,600 L1040,510 L1220,610 L1400,530 L1600,600 L1600,760 L0,760 Z" fill="#242a45"/>
+  <g fill="#7b84ab" opacity=".55">
+    <path d="M95,568 L120,540 L145,568 Z"/>
+    <path d="M375,528 L400,500 L425,528 Z"/>
+    <path d="M695,518 L720,490 L745,518 Z"/>
+    <path d="M1015,538 L1040,510 L1065,538 Z"/>
+    <path d="M1375,558 L1400,530 L1425,558 Z"/>
+  </g>
+
+  <rect x="0" y="700" width="1600" height="110" fill="url(#pines)"/>
+
+  <rect x="0" y="780" width="1600" height="120" fill="url(#lakeGrad)"/>
+  <ellipse cx="800" cy="820" rx="200" ry="20" fill="#e3a83f" opacity=".15"/>
+  <g stroke="#eef1f7" stroke-opacity=".1" stroke-width="2" fill="none">
+    <path d="M60,800 q60,-6 120,0 t120,0 t120,0 t120,0 t120,0"/>
+    <path d="M900,830 q60,-5 120,0 t120,0 t120,0 t120,0"/>
+    <path d="M40,865 q70,-6 140,0 t140,0 t140,0 t140,0 t140,0"/>
+  </g>
+</svg>
 
 <div class="wrap">
   <header class="top">
@@ -213,7 +293,6 @@
   <div class="panel" id="ccBalPanel" style="margin-top:16px">
     <div class="sechead"><div class="tt"><span class="pd" style="background:var(--card)"></span>Credit card balances</div><div class="sectot" id="ccBalTot"></div></div>
     <p class="ph" style="margin-top:0">Enter each card's balance, APR, and the payment you make to <em>that</em> card. The summary ranks them by your chosen payoff strategy and shows a real payoff per card; the total payment feeds your cash outflow up top.</p>
-    <p class="ph">"Payment $/mo" is your normal monthly payment. The second field next to it only applies to the month you're currently viewing — use it to log a payment that's higher or lower than usual without changing your baseline; leave it blank to fall back to your normal amount. Payoff estimates always use your normal payment, so one lighter or heavier month won't skew them.</p>
     <div id="ccBalRows"></div>
     <div style="margin-top:10px"><button class="btn" onclick="ccbAdd()">+ Add card</button></div>
     <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
@@ -276,21 +355,21 @@
 
 <script>
 const SECT={
-  affirm:{title:'Installment loans',color:'var(--affirm)',raw:'#a98bc0',mode:'installment'},
-  payin4:{title:'Pay in 4',color:'var(--pay4)',raw:'#c9a24e',mode:'payin4'},
-  ccplans:{title:'Credit card plans',color:'var(--ccplan)',raw:'#6aa9a0',mode:'installment'},
-  recurring:{title:'Recurring expenses',color:'var(--recur)',raw:'#7fa0c4',mode:'recurring'},
-  oneoff:{title:'One-time payments',color:'var(--oneoff)',raw:'#d98ca6',mode:'oncecash'},
-  card:{title:'Credit-card charges',color:'var(--card)',raw:'#d77866',mode:'mixed'},
+  affirm:{title:'Installment loans',color:'var(--affirm)',raw:'var(--affirm)',mode:'installment'},
+  payin4:{title:'Pay in 4',color:'var(--pay4)',raw:'var(--pay4)',mode:'payin4'},
+  ccplans:{title:'Credit card plans',color:'var(--ccplan)',raw:'var(--ccplan)',mode:'installment'},
+  recurring:{title:'Recurring expenses',color:'var(--recur)',raw:'var(--recur)',mode:'recurring'},
+  oneoff:{title:'One-time payments',color:'var(--oneoff)',raw:'var(--oneoff)',mode:'oncecash'},
+  card:{title:'Credit-card charges',color:'var(--card)',raw:'var(--card)',mode:'mixed'},
 };
 const SECTKEYS=['affirm','payin4','ccplans','recurring','oneoff','card'];
-const STACK=[['recurring','#7fa0c4'],['affirm','#a98bc0'],['payin4','#c9a24e'],['ccplans','#6aa9a0'],['oneoff','#d98ca6'],['card','#d77866']];
+const STACK=[['recurring','var(--recur)'],['affirm','var(--affirm)'],['payin4','var(--pay4)'],['ccplans','var(--ccplan)'],['oneoff','var(--oneoff)'],['card','var(--card)']];
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONL=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const fmt=n=>'$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmt0=n=>(n<0?'-':'')+'$'+Math.round(Math.abs(Number(n)||0)).toLocaleString('en-US');
 const KEY='cashflow:v3', OLDKEY='cashflow:v2';
-const META={affirm:{lab:'Installment',col:'#a98bc0'},payin4:{lab:'Pay in 4',col:'#c9a24e'},ccplans:{lab:'CC plan',col:'#6aa9a0'},recurring:{lab:'Recurring',col:'#7fa0c4'},oneoff:{lab:'One-time',col:'#d98ca6'},card:{lab:'Card',col:'#d77866'}};
+const META={affirm:{lab:'Installment',col:'var(--affirm)'},payin4:{lab:'Pay in 4',col:'var(--pay4)'},ccplans:{lab:'CC plan',col:'var(--ccplan)'},recurring:{lab:'Recurring',col:'var(--recur)'},oneoff:{lab:'One-time',col:'var(--oneoff)'},card:{lab:'Card',col:'var(--card)'}};
 const PAYDAYS=[15,30];
 function ord(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
 let view='forecast', half=1;
@@ -617,18 +696,18 @@ function renderTimeline(items){
   const n=end-start+1,plotW=W-padL-padR,plotH=H-padB-padT,slot=plotW/n,bw=Math.min(slot*0.62,34);
   const sq=v=>Math.sqrt(v/maxV);
   let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="ui-monospace, Menlo, monospace">`;
-  svg+=`<line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="#332c26"/>`;
+  svg+=`<line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--line)"/>`;
   for(let d=start;d<=end;d++){
     const x=padL+slot*(d-start)+slot/2,v=byDay[d]||0;
-    if(PAYDAYS.includes(d))svg+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+plotH}" stroke="#76b384" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    if(PAYDAYS.includes(d))svg+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+plotH}" stroke="var(--income)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
     if(v>0){
       const h=sq(v)*plotH,y=padT+plotH-h;
       const its=items.filter(i=>i.day===d);let best=null,bv=-1;its.forEach(i=>{if(i.amount>bv){bv=i.amount;best=i.sect;}});
       svg+=`<rect x="${x-bw/2}" y="${y}" width="${bw}" height="${h}" rx="3" fill="${META[best].col}"/>`;
-      svg+=`<text x="${x}" y="${y-4}" fill="#9a8e80" font-size="9" text-anchor="middle">$${Math.round(v)}</text>`;
+      svg+=`<text x="${x}" y="${y-4}" fill="var(--mute)" font-size="9" text-anchor="middle">$${Math.round(v)}</text>`;
     }
     if((d-start)%(n>15?2:1)===0||PAYDAYS.includes(d))
-      svg+=`<text x="${x}" y="${H-padB+15}" fill="${PAYDAYS.includes(d)?'#76b384':'#6b6258'}" font-size="9" text-anchor="middle">${d}</text>`;
+      svg+=`<text x="${x}" y="${H-padB+15}" fill="${PAYDAYS.includes(d)?'var(--income)':'var(--faint)'}" font-size="9" text-anchor="middle">${d}</text>`;
   }
   svg+='</svg>';
   document.getElementById('timeline').innerHTML=svg;
@@ -678,13 +757,13 @@ function projHover(evt,vi){
   const d=PROJDATA.find(x=>x.vi===vi);if(!d)return;
   const ym=idxToYM(vi);
   const rows=[
-    ['Recurring',d.recurring,'#7fa0c4'],
-    ['Installments',d.affirm,'#a98bc0'],
-    ['Pay in 4',d.payin4,'#c9a24e'],
-    ['One-time',d.oneoff,'#d98ca6'],
-    ['Card payments',d.pay,'#6aa9a0'],
-    ['CC plans',d.ccplans,'#6aa9a0'],
-    ['Card charges',d.card,'#d77866'],
+    ['Recurring',d.recurring,'var(--recur)'],
+    ['Installments',d.affirm,'var(--affirm)'],
+    ['Pay in 4',d.payin4,'var(--pay4)'],
+    ['One-time',d.oneoff,'var(--oneoff)'],
+    ['Card payments',d.pay,'var(--ccplan)'],
+    ['CC plans',d.ccplans,'var(--ccplan)'],
+    ['Card charges',d.card,'var(--card)'],
   ].filter(r=>r[1]>0);
   let html=`<div class="pt-title">${MONL[ym.m]} ${ym.y}</div><div class="legend">`;
   rows.forEach(([nm,v,col])=>{html+=`<div class="li"><span class="nm"><span class="pd" style="background:${col}"></span>${nm}</span><span class="vl">${fmt0(v)}</span></div>`;});
@@ -721,29 +800,29 @@ function renderProjection(){
   const groupW=slot*0.74, chkW=groupW*0.6, cardW=groupW*0.3, gap=groupW*0.1;
   const yOf=v=>padT+plotH-(v/maxV*plotH);
   let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="ui-monospace, Menlo, monospace">`;
-  for(let g=1;g<=3;g++){const v=maxV*g/3.3,y=yOf(v);svg+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#332c26" stroke-width="1"/><text x="${padL+2}" y="${y-4}" fill="#6b6258" font-size="9">${fmt0(v)}</text>`;}
+  for(let g=1;g<=3;g++){const v=maxV*g/3.3,y=yOf(v);svg+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${padL+2}" y="${y-4}" fill="var(--faint)" font-size="9">${fmt0(v)}</text>`;}
   data.forEach((d,k)=>{
     const gx=padL+slot*k+(slot-groupW)/2, sel=d.vi===selIdx;
     const chkX=gx, cardX=gx+chkW+gap;
     // checking stack (recurring + affirm)
     let yb=padT+plotH;
-    [['recurring','#7fa0c4'],['affirm','#a98bc0'],['payin4','#c9a24e'],['oneoff','#d98ca6'],['pay','#6aa9a0']].forEach(([key,col])=>{const val=d[key];if(val<=0)return;const h=val/maxV*plotH;yb-=h;svg+=`<rect x="${chkX}" y="${yb}" width="${chkW}" height="${h}" fill="${col}" ${key==='pay'?'opacity="0.55"':''} rx="2"/>`;});
+    [['recurring','var(--recur)'],['affirm','var(--affirm)'],['payin4','var(--pay4)'],['oneoff','var(--oneoff)'],['pay','var(--ccplan)']].forEach(([key,col])=>{const val=d[key];if(val<=0)return;const h=val/maxV*plotH;yb-=h;svg+=`<rect x="${chkX}" y="${yb}" width="${chkW}" height="${h}" fill="${col}" ${key==='pay'?'opacity="0.55"':''} rx="2"/>`;});
     // cash remaining cap over checking bar (uses this month's own take-home, which may be overridden)
     if(d.inc>0){
       const rem=d.inc-d.checking,yInc=yOf(d.inc),yChk=yOf(d.checking);
-      if(rem>0)svg+=`<rect x="${chkX}" y="${yInc}" width="${chkW}" height="${Math.max(0,yChk-yInc)}" fill="#76b384" opacity="0.16" stroke="#76b384" stroke-opacity="0.55" stroke-width="1" rx="2"/>`;
-      else if(rem<0)svg+=`<rect x="${chkX}" y="${yChk}" width="${chkW}" height="${Math.max(0,yInc-yChk)}" fill="#d77866" opacity="0.22" stroke="#d77866" stroke-opacity="0.7" stroke-width="1" rx="2"/>`;
+      if(rem>0)svg+=`<rect x="${chkX}" y="${yInc}" width="${chkW}" height="${Math.max(0,yChk-yInc)}" fill="var(--income)" opacity="0.16" stroke="var(--income)" stroke-opacity="0.55" stroke-width="1" rx="2"/>`;
+      else if(rem<0)svg+=`<rect x="${chkX}" y="${yChk}" width="${chkW}" height="${Math.max(0,yInc-yChk)}" fill="var(--card)" opacity="0.22" stroke="var(--card)" stroke-opacity="0.7" stroke-width="1" rx="2"/>`;
     }
     // separate card-spend bar (ccplans + charges)
     let cyb=padT+plotH;
-    [['ccplans','#6aa9a0'],['card','#d77866']].forEach(([key,col])=>{const val=d[key];if(val<=0)return;const h=val/maxV*plotH;cyb-=h;svg+=`<rect x="${cardX}" y="${cyb}" width="${cardW}" height="${h}" fill="${col}" opacity="0.9" rx="2"/>`;});
-    if(d.card_>0)svg+=`<text x="${cardX+cardW/2}" y="${yOf(d.card_)-3}" fill="#6aa9a0" font-size="7.5" text-anchor="middle">card</text>`;
-    if(sel){svg+=`<rect x="${gx-3}" y="${padT-2}" width="${groupW+6}" height="${plotH+2}" fill="#e0a64e" opacity="0.06" rx="4"/>`;
-      if(d.inc>0){const rem=d.inc-d.checking;svg+=`<text x="${chkX+chkW/2}" y="${Math.max(yOf(Math.max(d.inc,d.checking))-7,12)}" fill="${rem<0?'#d77866':'#76b384'}" font-size="10" text-anchor="middle">${rem<0?'over '+fmt0(-rem):fmt0(rem)+' cash'}</text>`;}
+    [['ccplans','var(--ccplan)'],['card','var(--card)']].forEach(([key,col])=>{const val=d[key];if(val<=0)return;const h=val/maxV*plotH;cyb-=h;svg+=`<rect x="${cardX}" y="${cyb}" width="${cardW}" height="${h}" fill="${col}" opacity="0.9" rx="2"/>`;});
+    if(d.card_>0)svg+=`<text x="${cardX+cardW/2}" y="${yOf(d.card_)-3}" fill="var(--ccplan)" font-size="7.5" text-anchor="middle">card</text>`;
+    if(sel){svg+=`<rect x="${gx-3}" y="${padT-2}" width="${groupW+6}" height="${plotH+2}" fill="var(--gold)" opacity="0.06" rx="4"/>`;
+      if(d.inc>0){const rem=d.inc-d.checking;svg+=`<text x="${chkX+chkW/2}" y="${Math.max(yOf(Math.max(d.inc,d.checking))-7,12)}" fill="${rem<0?'var(--card)':'var(--income)'}" font-size="10" text-anchor="middle">${rem<0?'over '+fmt0(-rem):fmt0(rem)+' cash'}</text>`;}
     }
     const ym=idxToYM(d.vi);
-    svg+=`<text x="${gx+groupW/2}" y="${H-padB+14}" fill="${sel?'#f1ebe3':'#6b6258'}" font-size="10" text-anchor="middle">${MON[ym.m]}</text>`;
-    if(ym.m===0)svg+=`<text x="${gx+groupW/2}" y="${H-padB+25}" fill="#6b6258" font-size="8" text-anchor="middle">'${String(ym.y).slice(2)}</text>`;
+    svg+=`<text x="${gx+groupW/2}" y="${H-padB+14}" fill="${sel?'var(--ink)':'var(--faint)'}" font-size="10" text-anchor="middle">${MON[ym.m]}</text>`;
+    if(ym.m===0)svg+=`<text x="${gx+groupW/2}" y="${H-padB+25}" fill="var(--faint)" font-size="8" text-anchor="middle">'${String(ym.y).slice(2)}</text>`;
     svg+=`<rect x="${padL+slot*k}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" style="cursor:pointer" onclick="selectMonth(${d.vi})" onmouseenter="projHover(event,${d.vi})" onmousemove="projMove(event)" onmouseleave="projHoverOut()"/>`;
   });
   // stepped take-home line: one flat segment per month so overrides read as distinct steps, not a slope
@@ -753,9 +832,9 @@ function renderProjection(){
       const gx=padL+slot*k+(slot-groupW)/2,y=yOf(d.inc);
       path+=(k===0?'M':'L')+gx+' '+y+' L'+(gx+groupW)+' '+y+' ';
     });
-    svg+=`<path d="${path}" fill="none" stroke="#76b384" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+    svg+=`<path d="${path}" fill="none" stroke="var(--income)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
     const selD=data.find(d=>d.vi===selIdx);
-    if(selD&&selD.inc>0)svg+=`<text x="${W-padR-2}" y="${yOf(selD.inc)-4}" fill="#76b384" font-size="9" text-anchor="end">take-home ${fmt0(selD.inc)}</text>`;
+    if(selD&&selD.inc>0)svg+=`<text x="${W-padR-2}" y="${yOf(selD.inc)-4}" fill="var(--income)" font-size="9" text-anchor="end">take-home ${fmt0(selD.inc)}</text>`;
   }
   svg+='</svg>';
   document.getElementById('proj').innerHTML=svg;
@@ -784,20 +863,20 @@ function renderDonut(){
   const checking=sums.recurring+sums.affirm+sums.payin4+sums.oneoff, cardSpend=sums.ccplans+sums.card, total=checking+cardSpend;
   document.getElementById('compSub').textContent='Cash vs card · '+MONL[idxToYM(selIdx).m];
   // outer ring: cash vs card; we render arcs grouped/ordered so cash sits together and card sits together
-  const segs=[['Recurring',sums.recurring,'#7fa0c4'],['Installments',sums.affirm,'#a98bc0'],['Pay in 4',sums.payin4,'#c9a24e'],['One-time',sums.oneoff,'#d98ca6'],['CC plans',sums.ccplans,'#6aa9a0'],['Card charges',sums.card,'#d77866']];
+  const segs=[['Recurring',sums.recurring,'var(--recur)'],['Installments',sums.affirm,'var(--affirm)'],['Pay in 4',sums.payin4,'var(--pay4)'],['One-time',sums.oneoff,'var(--oneoff)'],['CC plans',sums.ccplans,'var(--ccplan)'],['Card charges',sums.card,'var(--card)']];
   const R=64,C=2*Math.PI*R,cx=80,cy=80;let off=0,arcs='';
   if(total>0)segs.forEach(([nm,v,col])=>{if(v<=0)return;const len=v/total*C;arcs+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${col}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;off+=len;});
-  else arcs=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#241f1b" stroke-width="22"/>`;
-  document.getElementById('donut').innerHTML=`<svg viewBox="0 0 160 160" width="160" height="160" font-family="ui-monospace, Menlo, monospace">${arcs}<text x="${cx}" y="${cy-3}" text-anchor="middle" fill="#f1ebe3" font-size="17" font-weight="600">${fmt0(total)}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" fill="#6b6258" font-size="9">total</text></svg>`;
+  else arcs=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--panel2)" stroke-width="22"/>`;
+  document.getElementById('donut').innerHTML=`<svg viewBox="0 0 160 160" width="160" height="160" font-family="ui-monospace, Menlo, monospace">${arcs}<text x="${cx}" y="${cy-3}" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">${fmt0(total)}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" fill="var(--faint)" font-size="9">total</text></svg>`;
   document.getElementById('donutLegend').innerHTML=
     `<div class="li" style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:-2px">From checking · ${fmt0(checking)}</div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:#7fa0c4"></span>Recurring</span><span class="vl">${fmt(sums.recurring)}</span></div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:#a98bc0"></span>Installments</span><span class="vl">${fmt(sums.affirm)}</span></div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:#c9a24e"></span>Pay in 4</span><span class="vl">${fmt(sums.payin4)}</span></div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:#d98ca6"></span>One-time</span><span class="vl">${fmt(sums.oneoff)}</span></div>`+
+    `<div class="li"><span class="nm"><span class="pd" style="background:var(--recur)"></span>Recurring</span><span class="vl">${fmt(sums.recurring)}</span></div>`+
+    `<div class="li"><span class="nm"><span class="pd" style="background:var(--affirm)"></span>Installments</span><span class="vl">${fmt(sums.affirm)}</span></div>`+
+    `<div class="li"><span class="nm"><span class="pd" style="background:var(--pay4)"></span>Pay in 4</span><span class="vl">${fmt(sums.payin4)}</span></div>`+
+    `<div class="li"><span class="nm"><span class="pd" style="background:var(--oneoff)"></span>One-time</span><span class="vl">${fmt(sums.oneoff)}</span></div>`+
     `<div class="li" style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin:6px 0 -2px">On credit card · ${fmt0(cardSpend)}</div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:#6aa9a0"></span>CC plans</span><span class="vl">${fmt(sums.ccplans)}</span></div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:#d77866"></span>Card charges</span><span class="vl">${fmt(sums.card)}</span></div>`;
+    `<div class="li"><span class="nm"><span class="pd" style="background:var(--ccplan)"></span>CC plans</span><span class="vl">${fmt(sums.ccplans)}</span></div>`+
+    `<div class="li"><span class="nm"><span class="pd" style="background:var(--card)"></span>Card charges</span><span class="vl">${fmt(sums.card)}</span></div>`;
 }
 
 function renderSections(){document.getElementById('sections').innerHTML=SECTKEYS.map(sectionHTML).join('');}
@@ -810,8 +889,8 @@ function renderCardBalances(){
     <div><span class="lab">Card</span><input value="${esc(c.name)}" oninput="ccbInput('${c.id}','name',this.value)"></div>
     <div><span class="lab">Balance $</span><input class="mono" type="number" inputmode="decimal" value="${c.balance||''}" placeholder="0" oninput="ccbInput('${c.id}','balance',this.value)"></div>
     <div><span class="lab">APR %</span><input class="mono" type="number" inputmode="decimal" value="${c.apr||''}" placeholder="0" oninput="ccbInput('${c.id}','apr',this.value)"></div>
-    <div><span class="lab" style="color:var(--ccplan)">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" title="Your normal monthly payment to this card. Used every month by default, and always used for the payoff estimate below." oninput="ccbInput('${c.id}','payment',this.value)"></div>
-    <div><span class="lab" style="color:var(--ccplan)">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${hasOv?c.payMonths[key]:''}" placeholder="${c.payment||0}" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Doesn't affect the payoff estimate." oninput="ccbMonthInput('${c.id}',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Your normal monthly payment to this card. Used every month by default, and always used for the payoff estimate below.">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" title="Your normal monthly payment to this card. Used every month by default, and always used for the payoff estimate below." oninput="ccbInput('${c.id}','payment',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Doesn't affect the payoff estimate.">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${hasOv?c.payMonths[key]:''}" placeholder="${c.payment||0}" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Doesn't affect the payoff estimate." oninput="ccbMonthInput('${c.id}',this.value)"></div>
     <div><span class="lab">Interest/mo</span><span class="intv" id="ccbint_${c.id}">$0.00</span></div>
     <div style="text-align:right"><button class="icon-btn" title="remove" onclick="ccbDel('${c.id}')">🗑</button></div>
   </div>`;}).join('')||'<div class="empty">No cards yet — add a credit card to track its balance and payoff.</div>';
