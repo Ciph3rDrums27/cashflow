@@ -19,7 +19,7 @@
   .navmonth .mlabel small{display:block;font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);margin-top:1px}
   .navmonth .future{color:var(--gold)}.navmonth .past{color:var(--mute)}
   .ovr-dot{display:none;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-left:6px;vertical-align:middle}
-  .income-box{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mute)}
+  .income-box{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:12.5px;color:var(--mute)}
   .income-box input{width:110px}
   input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;font-size:13px;outline:none}
   input:focus,select:focus{border-color:var(--gold)}
@@ -129,12 +129,25 @@
   .dit{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .dit .nm{display:flex;align-items:center;gap:9px;font-size:13.5px}
   .dit .pd{width:8px;height:8px;border-radius:3px;flex:0 0 auto}
-  .dit .est{font-size:10px;color:var(--faint);margin-left:5px}
+  .dit .est,.pcp .pcrow .est{font-size:10px;color:var(--faint);margin-left:5px}
   .dit .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13.5px}
   .daysub{flex:0 0 90px;text-align:right;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--mute)}
   .payrow{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
   .payrow .ptag{font-size:10px;color:var(--income);border:1px solid rgba(118,179,132,.4);border-radius:20px;padding:2px 9px;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace}
   .payrow .ptxt{font-size:12px;color:var(--mute)}
+  .pcp{border:1px solid var(--line);border-radius:11px;background:var(--panel2);padding:12px 13px;margin-bottom:10px}
+  .pcp .pch{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .pcp .pcw{font-size:11px;color:var(--faint)}
+  .pcp .pcin{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13.5px;color:var(--income)}
+  .pcp .pcrow{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:3.5px 0}
+  .pcp .pcrow .pd{width:8px;height:8px;border-radius:3px;flex:0 0 auto}
+  .pcp .pcrow .pcdt{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:11.5px;color:var(--faint);flex:0 0 52px}
+  .pcp .pcrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pcp .pcrow .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px}
+  .pcp .pcnx{font-size:11.5px;color:var(--gold);margin-left:6px}
+  .pcp .pcft{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px}
+  .pcp .pcft .neg{color:var(--card)}
+  .pcp .pcempty{font-size:12.5px;color:var(--faint);padding:3px 0}
   .anytime{display:flex;flex-wrap:wrap;gap:10px}
   .chip{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
   .chip .pd{width:8px;height:8px;border-radius:3px}
@@ -685,10 +698,13 @@
       <button class="today-btn" id="todayBtn">Today</button>
     </div>
     <div class="income-box">
-      <label>Take-home&nbsp;$</label>
-      <input id="income" class="mono" type="number" inputmode="decimal" placeholder="0">
+      <label title="Your net pay per paycheck. Monthly take-home is calculated from how many paydays land in each month.">Paycheck&nbsp;$</label>
+      <input id="paycheck" class="mono" type="number" inputmode="decimal" placeholder="0" title="Net amount of one paycheck">
+      <label style="font-size:11px;color:var(--faint)">biweekly from</label>
+      <input id="payAnchor" class="mono" type="date" style="width:140px" title="Any known payday — paydays repeat every 2 weeks from this date">
+      <span id="incMonthly" class="mono" style="font-size:11px;color:var(--faint)"></span>
       <label class="incov-lab" id="incOvLbl">— override</label>
-      <input id="incOverride" class="mono" type="number" inputmode="decimal" placeholder="default" title="Override take-home for the selected month only">
+      <input id="incOverride" class="mono" type="number" inputmode="decimal" placeholder="default" title="Override this month's total take-home">
       <button class="incov-clear" id="incOvClear" title="Clear this month's override">✕</button>
       <label style="margin-left:6px;color:var(--ccplan)">CC payment</label>
       <span id="cardpayTot" class="mono" style="color:var(--ccplan);min-width:64px;display:inline-block">$0</span>
@@ -769,6 +785,12 @@
     <div class="cards" id="calCards"></div>
 
     <div class="panel">
+      <h2 id="pcTitle">Paycheck coverage</h2>
+      <p class="ph" id="pcSub"></p>
+      <div id="pcList"></div>
+    </div>
+
+    <div class="panel">
       <h2 id="tlTitle">Outflow timeline</h2>
       <p class="ph">Bar height scaled to amount (square-root, so small bills stay visible). Green dashes = payday.</p>
       <div id="timeline"></div>
@@ -813,12 +835,11 @@ const fmt=n=>'$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,
 const fmt0=n=>(n<0?'-':'')+'$'+Math.round(Math.abs(Number(n)||0)).toLocaleString('en-US');
 const KEY='cashflow:v3', OLDKEY='cashflow:v2';
 const META={affirm:{lab:'Installment',col:'var(--affirm)'},payin4:{lab:'Pay in 4',col:'var(--pay4)'},ccplans:{lab:'CC plan',col:'var(--ccplan)'},recurring:{lab:'Recurring',col:'var(--recur)'},oneoff:{lab:'One-time',col:'var(--oneoff)'},card:{lab:'Card',col:'var(--card)'}};
-const PAYDAYS=[15,30];
 function ord(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
 let view='forecast', half=1;
 
 const SEED={
-  income:6000,
+  paycheck:2769.23, payAnchor:'2026-09-04', payEvery:14,
   affirm:[
     {name:'Example installment A', amount:45.00, date:'2026-06-05', left:6},
     {name:'Example installment B', amount:30.00, date:'2026-06-15', left:3},
@@ -864,10 +885,27 @@ function idxToYM(i){return {y:Math.floor(i/12), m:i%12};}
 function ymKey(i){const {y,m}=idxToYM(i);return y+'-'+String(m+1).padStart(2,'0');}
 function parseStart(d){if(!d)return null;const p=d.split('-').map(Number);return mi(p[0],p[1]-1);}
 function uid(){return 'x'+Math.random().toString(36).slice(2,9);}
+
+// Pay schedule. Paydays repeat every payEvery days from payAnchor (a known payday),
+// so a month has 2 or 3 of them rather than fixed days-of-month. Day math runs in
+// whole UTC days to stay immune to DST shifts.
+const DEFAULT_PAY_ANCHOR='2026-09-04', DAYMS=86400000;
+function dayNum(y,m,d){return Math.round(Date.UTC(y,m,d)/DAYMS);}
+function payAnchorNum(){const p=String(S.payAnchor||DEFAULT_PAY_ANCHOR).split('-').map(Number);return dayNum(p[0],(p[1]||1)-1,p[2]||1);}
+function payEvery(){return Math.max(1,Number(S.payEvery)||14);}
+function isPayday(y,m,d){const e=payEvery();return (((dayNum(y,m,d)-payAnchorNum())%e)+e)%e===0;}
+function daysInMonth(vi){const {y,m}=idxToYM(vi);return new Date(Date.UTC(y,m+1,0)).getUTCDate();}
+function paydaysIn(vi){
+  const {y,m}=idxToYM(vi),out=[],last=daysInMonth(vi);
+  for(let d=1;d<=last;d++)if(isPayday(y,m,d))out.push(d);
+  return out;
+}
+// Monthly take-home is derived: paycheck x however many paydays land in the month,
+// so 3-paycheck months read higher. A manual month override still wins.
 function incomeFor(vi){
   const key=ymKey(vi);
   const ov=S.incomeMonths&&S.incomeMonths[key];
-  return ov!=null?Number(ov):(Number(S.income)||0);
+  return ov!=null?Number(ov):(Number(S.paycheck)||0)*paydaysIn(vi).length;
 }
 
 const MONA=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
@@ -921,6 +959,12 @@ function dateVal(id,refVi){
 function normalize(s){
   s=s||{};
   s.income=Number(s.income)||0;
+  // Older saves stored a flat monthly take-home. Convert it once to a biweekly
+  // paycheck (26 checks a year); s.income is kept but no longer read.
+  if(s.paycheck==null)s.paycheck=s.income?Math.round(s.income*12/26*100)/100:0;
+  s.paycheck=Number(s.paycheck)||0;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(s.payAnchor||'')))s.payAnchor=DEFAULT_PAY_ANCHOR;
+  s.payEvery=Math.max(1,Number(s.payEvery)||14);
   if(!s.incomeMonths||typeof s.incomeMonths!=='object')s.incomeMonths={};
   s.cardPayment=Number(s.cardPayment)||0;
   if(!s.cardPayMonths||typeof s.cardPayMonths!=='object')s.cardPayMonths={};
@@ -964,7 +1008,7 @@ async function load(){
   S=normalize(S);
   await save();
   selIdx=curIdx();
-  document.getElementById('income').value=S.income||'';
+  document.getElementById('paycheck').value=S.paycheck||'';
   render();
 }
 function cardPayFor(c,vi){
@@ -1046,7 +1090,14 @@ function renderIncomeBox(){
   document.getElementById('incOvLbl').textContent=m+' override';
   const ovEl=document.getElementById('incOverride');
   if(document.activeElement!==ovEl)ovEl.value=has?S.incomeMonths[key]:'';
-  ovEl.placeholder=S.income?String(S.income):'default';
+  const n=paydaysIn(selIdx).length, base=(Number(S.paycheck)||0)*n;
+  ovEl.placeholder=base?String(Math.round(base)):'default';
+  const payEl=document.getElementById('paycheck');
+  if(payEl&&document.activeElement!==payEl)payEl.value=S.paycheck||'';
+  const anchorEl=document.getElementById('payAnchor');
+  if(anchorEl&&document.activeElement!==anchorEl)anchorEl.value=S.payAnchor||DEFAULT_PAY_ANCHOR;
+  const monEl=document.getElementById('incMonthly');
+  if(monEl)monEl.textContent=base?`${m}: ${n} checks · ${fmt0(incomeFor(selIdx))}`:'';
 }
 
 window.setView=v=>{
@@ -1069,26 +1120,73 @@ function dayOf(it,sect,vi){
   if(it.date){return Number(it.date.split('-')[2]);}
   return null;
 }
-function calItems(){
+function calItems(vi){
+  if(vi==null)vi=selIdx;
   const out=[];
-  const {y,m}=idxToYM(selIdx);
+  const {y,m}=idxToYM(vi);
   SECTKEYS.forEach(sect=>{(S[sect]||[]).forEach(it=>{
     if(it.on===false)return;
     if(SECT[sect].mode==='payin4'){
       payin4Dates(it).forEach(d=>{if(d.getFullYear()===y&&d.getMonth()===m)out.push({sect,name:it.name,amount:Number(it.amount)||0,day:d.getDate(),variable:false,est:false});});
       return;
     }
-    const ev=evalItem(it,sect,selIdx);
+    const ev=evalItem(it,sect,vi);
     if(ev.status!=='on'||ev.amt<=0)return;
-    out.push({sect,name:it.name,amount:ev.amt,day:dayOf(it,sect),variable:!!it.variable,est:!!ev.est});
+    out.push({sect,name:it.name,amount:ev.amt,day:dayOf(it,sect,vi),variable:!!it.variable,est:!!ev.est});
   });});
   return out;
 }
+// Each paycheck covers the bills due from that payday until the next one. That
+// window runs 14 days, so the last check of a month covers early next-month bills
+// (e.g. the Sep 18 check pays Oct 1 rent) — hence pooling two months of items.
+function paycheckPeriods(vi){
+  const {y,m}=idxToYM(vi),e=payEvery(),amt=Number(S.paycheck)||0;
+  const pool=[];
+  [vi,vi+1].forEach(v=>{
+    const ym=idxToYM(v);
+    calItems(v).forEach(i=>{if(i.day!=null)pool.push({sect:i.sect,name:i.name,amount:i.amount,est:i.est,day:i.day,vi:v,n:dayNum(ym.y,ym.m,i.day)});});
+  });
+  return paydaysIn(vi).map(d=>{
+    const start=dayNum(y,m,d),end=start+e;
+    const items=pool.filter(i=>i.n>=start&&i.n<end).sort((a,b)=>a.n-b.n||b.amount-a.amount);
+    const total=items.reduce((s,i)=>s+i.amount,0);
+    return {day:d,vi,start,end,items,total,left:amt-total};
+  });
+}
 function inHalf(day){return half===1?(day>=1&&day<=15):(day>=16);}
+
+function renderCoverage(){
+  const periods=paycheckPeriods(selIdx),amt=Number(S.paycheck)||0;
+  const m=MONL[idxToYM(selIdx).m];
+  document.getElementById('pcTitle').textContent='Paycheck coverage · '+m;
+  const sub=document.getElementById('pcSub');
+  if(!amt){
+    sub.textContent='Set your paycheck amount up top to see what each one covers.';
+    document.getElementById('pcList').innerHTML='';
+    return;
+  }
+  sub.textContent=`Each paycheck covers the bills due until the next one — so the last check of the month picks up early next-month bills like rent. ${periods.length} paycheck${periods.length===1?'':'s'} in ${m}.`;
+  const html=periods.map(p=>{
+    // p.end is exclusive (it's the next payday), so the last day this check covers is end-1
+    const sd=idxToYM(p.vi),lastDay=new Date((p.end-1)*DAYMS);
+    const untilTxt=MON[lastDay.getUTCMonth()]+' '+lastDay.getUTCDate();
+    const rows=p.items.length?p.items.map(i=>{
+      const iy=idxToYM(i.vi),crosses=i.vi!==selIdx;
+      return `<div class="pcrow"><span class="pd" style="background:${META[i.sect].col}"></span><span class="pcdt">${MON[iy.m]} ${i.day}</span><span class="nm">${esc(i.name)}${i.est?'<span class="est">est</span>':''}${crosses?`<span class="pcnx">${MON[iy.m]}</span>`:''}</span><span class="vl">${fmt(i.amount)}</span></div>`;
+    }).join(''):'<div class="pcempty">Nothing dated in this stretch.</div>';
+    return `<div class="pcp">
+      <div class="pch"><span class="ptag">payday ${MON[sd.m]} ${p.day}</span><span class="pcw">covers through ${untilTxt}</span><span class="pcin">+${fmt(amt)}</span></div>
+      ${rows}
+      <div class="pcft"><span>${p.items.length} bill${p.items.length===1?'':'s'} · ${fmt(p.total)}</span><span class="${p.left<0?'neg':''}">${p.left<0?'short '+fmt0(-p.left):'left '+fmt0(p.left)}</span></div>
+    </div>`;
+  }).join('')||'<div class="empty">No paydays land in this month — check the payday anchor date up top.</div>';
+  document.getElementById('pcList').innerHTML=html;
+}
 
 function renderCalendar(){
   const m=MONL[idxToYM(selIdx).m];
   document.getElementById('calMonthLbl').textContent='Showing '+m+' '+idxToYM(selIdx).y+' — switch months with the arrows above';
+  renderCoverage();
   const items=calItems();
   const dated=items.filter(i=>i.day!=null), undated=items.filter(i=>i.day==null);
   const halfItems=dated.filter(i=>inHalf(i.day));
@@ -1111,7 +1209,7 @@ function renderCalendar(){
   document.getElementById('listSub').textContent=days.length?(fmt(halfTotal)+' across '+days.length+' days'):'No dated bills in this half.';
 
   const start=half===1?1:16,end=half===1?15:31;
-  const payInHalf=PAYDAYS.filter(p=>p>=start&&p<=end);
+  const payInHalf=paydaysIn(selIdx).filter(p=>p>=start&&p<=end);
   const rowsByDay={};days.forEach(d=>{rowsByDay[d]=halfItems.filter(i=>i.day===d).sort((a,b)=>b.amount-a.amount);});
   let html='';
   [...new Set([...days,...payInHalf])].sort((a,b)=>a-b).forEach(d=>{
@@ -1122,7 +1220,7 @@ function renderCalendar(){
         its.map(i=>`<div class="dit"><span class="nm"><span class="pd" style="background:${META[i.sect].col}"></span>${esc(i.name)}${i.est?'<span class="est">est</span>':''}</span><span class="vl">${fmt(i.amount)}</span></div>`).join('')+
         `</div><div class="daysub">${fmt(sub)}</div></div>`;
     }
-    if(isPay){const incHalf=incomeFor(selIdx);html+=`<div class="payrow"><span class="ptag">payday ~${ord(d)}</span><span class="ptxt">paycheck in${incHalf?' (~'+fmt0(incHalf/2)+')':''}</span></div>`;}
+    if(isPay){const amt=Number(S.paycheck)||0;html+=`<div class="payrow"><span class="ptag">payday ${MON[idxToYM(selIdx).m]} ${d}</span><span class="ptxt">paycheck in${amt?' ('+fmt(amt)+')':''}</span></div>`;}
   });
   document.getElementById('days').innerHTML=html||'<div style="color:var(--faint);font-size:13px;padding:10px 4px">Nothing dated in this half for '+m+'.</div>';
 
@@ -1133,6 +1231,7 @@ function renderCalendar(){
 
 function renderTimeline(items){
   const start=half===1?1:16,end=half===1?15:31;
+  const payDays=paydaysIn(selIdx);
   const byDay={};items.forEach(i=>byDay[i.day]=(byDay[i.day]||0)+i.amount);
   const maxV=Math.max(1,...Object.values(byDay));
   const W=900,H=170,padL=8,padR=8,padB=26,padT=12;
@@ -1142,15 +1241,15 @@ function renderTimeline(items){
   svg+=`<line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--line)"/>`;
   for(let d=start;d<=end;d++){
     const x=padL+slot*(d-start)+slot/2,v=byDay[d]||0;
-    if(PAYDAYS.includes(d))svg+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+plotH}" stroke="var(--income)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    if(payDays.includes(d))svg+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+plotH}" stroke="var(--income)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
     if(v>0){
       const h=sq(v)*plotH,y=padT+plotH-h;
       const its=items.filter(i=>i.day===d);let best=null,bv=-1;its.forEach(i=>{if(i.amount>bv){bv=i.amount;best=i.sect;}});
       svg+=`<rect x="${x-bw/2}" y="${y}" width="${bw}" height="${h}" rx="3" fill="${META[best].col}"/>`;
       svg+=`<text x="${x}" y="${y-4}" fill="var(--mute)" font-size="9" text-anchor="middle">$${Math.round(v)}</text>`;
     }
-    if((d-start)%(n>15?2:1)===0||PAYDAYS.includes(d))
-      svg+=`<text x="${x}" y="${H-padB+15}" fill="${PAYDAYS.includes(d)?'var(--income)':'var(--faint)'}" font-size="9" text-anchor="middle">${d}</text>`;
+    if((d-start)%(n>15?2:1)===0||payDays.includes(d))
+      svg+=`<text x="${x}" y="${H-padB+15}" fill="${payDays.includes(d)?'var(--income)':'var(--faint)'}" font-size="9" text-anchor="middle">${d}</text>`;
   }
   svg+='</svg>';
   document.getElementById('timeline').innerHTML=svg;
@@ -1188,9 +1287,9 @@ function renderCards(){
   const m=MON[idxToYM(selIdx).m];
   const nCards=(S.ccBalances||[]).filter(c=>c.payment>0).length;
   document.getElementById('cards').innerHTML=[
-    `<div class="card accent"><div class="lab">${m} cash outflow</div><div class="big">${fmt(checking)}</div><div class="note">incl. ${fmt0(pay)} card payments · ${inc?Math.round(checking/inc*100)+'% of take-home':'set take-home'}</div></div>`,
+    `<div class="card accent"><div class="lab">${m} cash outflow</div><div class="big">${fmt(checking)}</div><div class="note">incl. ${fmt0(pay)} card payments · ${inc?Math.round(checking/inc*100)+'% of take-home':'set paycheck'}</div></div>`,
     `<div class="card" style="border-color:rgba(106,169,160,.4)"><div class="lab">Card payments</div><div class="big" style="color:var(--ccplan)">${fmt(pay)}</div><div class="note">${nCards?'across '+nCards+' card'+(nCards>1?'s':'')+' · set below':'set per card below'}</div></div>`,
-    `<div class="card left ${left<0?'neg':''}"><div class="lab">Remaining cash${hasOv?'<span class="incov-tag">income override</span>':''}</div><div class="big">${inc?fmt0(left):'—'}</div><div class="note">${inc?(left<0?'over take-home':'after all cash outflow'):'add take-home'}</div></div>`,
+    `<div class="card left ${left<0?'neg':''}"><div class="lab">Remaining cash${hasOv?'<span class="incov-tag">income override</span>':''}</div><div class="big">${inc?fmt0(left):'—'}</div><div class="note">${inc?(left<0?'over take-home':'after all cash outflow'):'add paycheck'}</div></div>`,
     `<div class="card"><div class="lab">Card balance trend</div><div class="big" style="color:${delta<0?'var(--card)':'var(--income)'}">${delta<0?'+'+fmt0(-delta):'−'+fmt0(delta)}</div><div class="note">${delta<0?'tracked charges exceed payments':'payments cover tracked charges'}</div></div>`,
   ].join('');
 }
@@ -1608,7 +1707,8 @@ window.del=(sect,id)=>{
   if(!confirm(`Delete "${it.name}"? This can't be undone.`))return;
   S[sect]=S[sect].filter(x=>x.id!==id);save();render();
 };
-let inT;document.getElementById('income').oninput=e=>{S.income=Number(e.target.value)||0;clearTimeout(inT);inT=setTimeout(()=>{save();render();},400);};
+let inT;document.getElementById('paycheck').oninput=e=>{S.paycheck=Number(e.target.value)||0;clearTimeout(inT);inT=setTimeout(()=>{save();render();},400);};
+document.getElementById('payAnchor').onchange=e=>{const v=e.target.value;if(/^\d{4}-\d{2}-\d{2}$/.test(v)){S.payAnchor=v;save();render();}else{e.target.value=S.payAnchor||DEFAULT_PAY_ANCHOR;}};
 let inOvT;document.getElementById('incOverride').oninput=e=>{
   const key=ymKey(selIdx),v=e.target.value;
   if(!S.incomeMonths)S.incomeMonths={};
@@ -1637,7 +1737,7 @@ document.getElementById('importBtn').onclick=()=>document.getElementById('import
 document.getElementById('importFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   const rd=new FileReader();
-  rd.onload=()=>{try{const obj=JSON.parse(rd.result);S=normalize(obj);document.getElementById('income').value=S.income||'';save();render();}catch(err){alert('Could not read that file — make sure it is a cashflow JSON export.');}};
+  rd.onload=()=>{try{const obj=JSON.parse(rd.result);S=normalize(obj);document.getElementById('paycheck').value=S.paycheck||'';save();render();}catch(err){alert('Could not read that file — make sure it is a cashflow JSON export.');}};
   rd.readAsText(f);e.target.value='';
 };
 
