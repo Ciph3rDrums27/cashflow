@@ -762,6 +762,8 @@
         <button id="stratAvalanche" class="active" onclick="setPayoffStrategy('avalanche')" title="Attack the highest-APR balance first — minimizes total interest paid">Avalanche</button>
         <button id="stratSnowball" onclick="setPayoffStrategy('snowball')" title="Attack the smallest balance first — faster wins, can be easier to stick with">Snowball</button>
       </div>
+      <span style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;margin-left:10px">New charges land on</span>
+      <select id="chargeCardSel" style="font-size:12.5px;padding:6px 8px" title="The card you actually spend on. Its projected balance gets your tracked CC plans + card charges added back each month; frozen or paid-in-full cards should stay off this." onchange="setChargeCard(this.value)"></select>
     </div>
     <div class="insight" id="ccBalSummary" style="border-left-color:var(--card)"></div>
   </div>
@@ -980,6 +982,10 @@ function normalize(s){
     // Only seeds when the map is absent, so deliberately clearing every anchor sticks.
     if(!c.balanceMonths||typeof c.balanceMonths!=='object'){c.balanceMonths={};if(c.balance>0)c.balanceMonths[ymKey(curIdx())]=c.balance;}
   });
+  // Which card new spending lands on. Charges aren't tagged per item, so one card
+  // carries them all; '' means nobody does and balances roll on payments alone.
+  s.chargeCardId=String(s.chargeCardId||'');
+  if(s.chargeCardId&&!s.ccBalances.some(c=>c.id===s.chargeCardId))s.chargeCardId='';
   return s;
 }
 function migrateV2(s){ // v2 had no ccplans and possibly no variable fields
@@ -1031,6 +1037,10 @@ function cardPayFor(c,vi){
 function balKeyIdx(k){const p=k.split('-').map(Number);return mi(p[0],(p[1]||1)-1);}
 function balAnchors(c){return Object.keys(c.balanceMonths||{}).filter(k=>/^\d{4}-\d{2}$/.test(k)).sort();}
 function balanceIsActual(c,vi){return !!(c.balanceMonths&&c.balanceMonths[ymKey(vi)]!=null);}
+// Tracked spend that bills to a card in month vi: CC plans + card charges. This is the
+// app's own "accrues to card balance" grouping (the donut's On-credit-card total).
+function monthlyChargesFor(vi){return sectionSum('ccplans',vi)+sectionSum('card',vi);}
+function cardChargesFor(c,vi){return S.chargeCardId&&c.id===S.chargeCardId?monthlyChargesFor(vi):0;}
 function balanceFor(c,vi){
   const keys=balAnchors(c);
   let from,bal;
@@ -1044,7 +1054,7 @@ function balanceFor(c,vi){
   if(vi<=from)return Math.max(0,bal);
   const rate=(Number(c.apr)||0)/100/12;
   for(let v=from;v<vi;v++){
-    bal=bal+bal*rate-cardPayFor(c,v);
+    bal=bal+bal*rate+cardChargesFor(c,v)-cardPayFor(c,v);
     if(bal<=0)return 0;
   }
   return bal;
@@ -1479,15 +1489,20 @@ function renderCardBalances(){
     <div style="text-align:right"><button class="icon-btn" title="remove" onclick="ccbDel('${c.id}')">🗑</button></div>
   </div>`;}).join('')||'<div class="empty">No cards yet — add a credit card to track its balance and payoff.</div>';
   document.getElementById('ccBalRows').innerHTML=rows;
+  const sel=document.getElementById('chargeCardSel');
+  if(sel)sel.innerHTML=`<option value="">No card</option>`+S.ccBalances.map(c=>
+    `<option value="${c.id}"${S.chargeCardId===c.id?' selected':''}>${esc(c.name)}</option>`).join('');
   ccbRecalc();
 }
-function payoffOf(bal,apr,pay){
-  const im=apr/100/12, interest=bal*im;
+// Ongoing charges bill back to the card, so the balance falls by (payment - charges)
+// each month; the closed form is the same with that net in place of the payment.
+function payoffOf(bal,apr,pay,charge){
+  const im=apr/100/12, interest=bal*im, ch=Number(charge)||0, net=pay-ch;
   if(bal<=0)return {state:'none',interest:0};
-  if(pay<=0)return {state:'nopay',interest};
-  if(pay<=interest)return {state:'under',interest};
-  const n=Math.ceil(-Math.log(1-bal*im/pay)/Math.log(1+im));
-  return {state:'ok',interest,n,paid:pay*n-bal};
+  if(pay<=0)return {state:'nopay',interest,charge:ch};
+  if(net<=interest)return {state:'under',interest,charge:ch,net};
+  const n=Math.ceil(-Math.log(1-bal*im/net)/Math.log(1+im));
+  return {state:'ok',interest,charge:ch,net,n,paid:net*n-bal};
 }
 function ccbRecalc(){
   let totB=0,totI=0,totP=0;
@@ -1513,17 +1528,23 @@ function ccbRecalc(){
       :(Number(b.apr)||0)-(Number(a.apr)||0));
     const target=ranked[0];
     const lines=ranked.map(c=>{
-      const po=payoffOf(bals[c.id],Number(c.apr),Number(c.payment));
+      const chg=cardChargesFor(c,selIdx);
+      const po=payoffOf(bals[c.id],Number(c.apr),Number(c.payment),chg);
       let t;
       if(po.state==='nopay')t=`set a payment`;
-      else if(po.state==='under')t=`<span style="color:var(--card)">underwater</span> — ${fmt0(c.payment)}/mo < ${fmt0(po.interest)}/mo interest, balance grows`;
-      else t=`paid off ~<strong>${po.n}mo</strong>, ~${fmt0(po.paid)} interest`;
+      else if(po.state==='under')t=chg>0
+        ?`<span style="color:var(--card)">underwater</span> — ${fmt0(c.payment)}/mo less ${fmt0(chg)}/mo new charges leaves ${fmt0(po.net)} against ${fmt0(po.interest)}/mo interest, balance grows`
+        :`<span style="color:var(--card)">underwater</span> — ${fmt0(c.payment)}/mo < ${fmt0(po.interest)}/mo interest, balance grows`;
+      else t=`paid off ~<strong>${po.n}mo</strong>, ~${fmt0(po.paid)} interest${chg>0?` (after ${fmt0(chg)}/mo new charges)`:''}`;
       return `<div style="margin:2px 0">• <strong>${esc(c.name)}</strong> — ${fmt0(bals[c.id])} at ${(Number(c.apr)||0).toFixed(2)}%, ${fmt0(c.payment)}/mo → ${t}</div>`;
     }).join('');
     const strat=payoffStrategy==='snowball'
       ?`<div style="margin-top:8px"><strong>Snowball:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${fmt0(bals[target.id])} — your smallest balance, for a quick win). Clear it, then roll its payment onto the next-smallest balance.</div>`
       :`<div style="margin-top:8px"><strong>Avalanche:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${(Number(target.apr)||0).toFixed(2)}% — your most expensive). Clear it, then roll its payment onto the next-highest APR.</div>`;
-    const note=charging>0?`<div style="margin-top:6px;color:var(--mute)">You're charging ${fmt0(charging)}/mo in tracked plans + charges — those aren't tied to a specific card, so they're not in the projected balances above; they add back to these balances if not paid off in full.</div>`:'';
+    const chgCard=S.ccBalances.find(c=>c.id===S.chargeCardId);
+    const note=charging>0?`<div style="margin-top:6px;color:var(--mute)">You're charging ${fmt0(charging)}/mo in tracked plans + charges — ${chgCard
+      ?`added back onto <strong>${esc(chgCard.name)}</strong> each month in the projections above.`
+      :`not in the projected balances above. Pick the card you actually spend on under "new charges land on" so they get added back.`}</div>`:'';
     html=`<div style="margin-bottom:6px">${fmt0(totB)} total as of ${mLab} at ${fmt0(totI)}/mo interest:</div>${lines}${strat}${note}`;
   }
   document.getElementById('ccBalSummary').innerHTML=html;
@@ -1535,6 +1556,10 @@ window.setPayoffStrategy=(s)=>{
   if(a)a.classList.toggle('active',s==='avalanche');
   if(b)b.classList.toggle('active',s==='snowball');
   ccbRecalc();
+};
+window.setChargeCard=(id)=>{
+  S.chargeCardId=String(id||'');
+  save();renderCardBalances();
 };
 let ccbT;
 window.ccbInput=(id,field,val)=>{
@@ -1566,7 +1591,9 @@ window.ccbAdd=()=>{S.ccBalances.push({id:uid(),name:'Card',balance:0,apr:0,payme
 window.ccbDel=(id)=>{
   const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
   if(!confirm(`Delete "${c.name}"? This removes its balance, APR, and payment history — this can't be undone.`))return;
-  S.ccBalances=S.ccBalances.filter(x=>x.id!==id);save();renderCardBalances();renderCards();renderProjection();
+  S.ccBalances=S.ccBalances.filter(x=>x.id!==id);
+  if(S.chargeCardId===id)S.chargeCardId='';
+  save();renderCardBalances();renderCards();renderProjection();
 };
 function sectionHTML(sect){
   const cfg=SECT[sect],tot=sectionSum(sect,selIdx),m=MON[idxToYM(selIdx).m];
