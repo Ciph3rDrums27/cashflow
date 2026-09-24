@@ -1048,24 +1048,36 @@ function balanceIsActual(c,vi){return !!(c.balanceMonths&&c.balanceMonths[ymKey(
 // app's own "accrues to card balance" grouping (the donut's On-credit-card total).
 function monthlyChargesFor(vi){return sectionSum('ccplans',vi)+sectionSum('card',vi);}
 function cardChargesFor(c,vi){return S.chargeCardId&&c.id===S.chargeCardId?monthlyChargesFor(vi):0;}
-function balanceFor(c,vi){
+// Walks the roll-forward and keeps the running parts, so the projection can show its
+// own arithmetic. balanceFor is just the resulting balance.
+function balanceBreakdown(c,vi){
   const keys=balAnchors(c);
-  let from,bal;
-  if(!keys.length){from=curIdx();bal=Number(c.balance)||0;}
+  let from,raw;
+  if(!keys.length){from=curIdx();raw=Number(c.balance)||0;}
   else{
     const prior=keys.filter(k=>balKeyIdx(k)<=vi);
     // before the earliest reading there is nothing to project from, so hold it flat
     const use=prior.length?prior[prior.length-1]:keys[0];
-    from=balKeyIdx(use);bal=Number(c.balanceMonths[use])||0;
+    from=balKeyIdx(use);raw=Number(c.balanceMonths[use])||0;
   }
-  if(vi<=from)return Math.max(0,bal);
+  const start=Math.max(0,raw);
+  const out={from,fromBal:start,interest:0,charges:0,payments:0,months:0,bal:start};
+  if(vi<=from)return out;
   const rate=(Number(c.apr)||0)/100/12;
+  let bal=start;
   for(let v=from;v<vi;v++){
-    bal=bal+bal*rate+cardChargesFor(c,v)-cardPayFor(c,v);
-    if(bal<=0)return 0;
+    // The balance you typed is what you owe now, so that month's spending is already
+    // inside it - adding it again would double-count everything already logged. A
+    // payment for that month is still a plan, not yet made, so it does come off.
+    const chg=v>from?cardChargesFor(c,v):0, pay=cardPayFor(c,v), int=bal*rate;
+    out.interest+=int; out.charges+=chg; out.payments+=pay; out.months++;
+    bal=bal+int+chg-pay;
+    if(bal<=0){bal=0;break;}
   }
-  return bal;
+  out.bal=bal;
+  return out;
 }
+function balanceFor(c,vi){return balanceBreakdown(c,vi).bal;}
 function cardPaymentTotal(vi){return (S.ccBalances||[]).reduce((s,c)=>s+cardPayFor(c,vi),0);}
 function updateCardPayHeader(){const el=document.getElementById('cardpayTot');if(el)el.textContent=fmt0(cardPaymentTotal(selIdx));}
 async function save(){try{await store.set(KEY,JSON.stringify(S));flash();}catch(e){console.error(e);}}
@@ -1483,10 +1495,10 @@ function renderCardBalances(){
   const key=ymKey(selIdx), mLabel=MON[idxToYM(selIdx).m];
   const rows=S.ccBalances.map(c=>{
     const hasOv=c.payMonths&&c.payMonths[key]!=null;
-    const bal=balanceFor(c,selIdx), isAct=balanceIsActual(c,selIdx);
+    const bd=balanceBreakdown(c,selIdx), bal=bd.bal, isAct=balanceIsActual(c,selIdx);
     const balTitle=isAct
       ?`Your actual ${esc(mLabel)} balance. Later months project forward from here.`
-      :`Projected for ${esc(mLabel)} from your last actual balance, minus payments plus interest. Type your real statement balance to correct it from this month on.`;
+      :`Projected for ${esc(mLabel)} from your ${MON[idxToYM(bd.from).m]} balance of ${fmt(bd.fromBal)}, over ${bd.months} month${bd.months===1?'':'s'}: +${fmt(bd.interest)} interest, +${fmt(bd.charges)} new charges, −${fmt(bd.payments)} payments. Spending already logged in ${MON[idxToYM(bd.from).m]} is in that starting balance, so it isn't added again. Type your real statement balance to re-anchor here.`;
     return `<div class="ccbrow">
     <div><span class="lab">Card</span><input value="${esc(c.name)}" oninput="ccbInput('${c.id}','name',this.value)"></div>
     <div><span class="lab" style="cursor:help" title="${balTitle}">Balance $ <span class="btag${isAct?' act':''}" id="ccbtag_${c.id}">${isAct?'actual':'proj'}</span></span><input class="mono" type="number" inputmode="decimal" value="${bal?Math.round(bal*100)/100:''}" placeholder="0" title="${balTitle}" oninput="ccbBalInput('${c.id}',this.value)"></div>
