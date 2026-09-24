@@ -755,7 +755,7 @@
 
   <div class="panel" id="ccBalPanel" style="margin-top:16px">
     <div class="sechead"><div class="tt"><span class="pd" style="background:var(--card)"></span>Credit card balances</div><div class="sectot" id="ccBalTot"></div></div>
-    <p class="ph" style="margin-top:0">Enter each card's balance, APR, and the payment you make to <em>that</em> card. Balances are per month: the one you type is your actual reading for the month you're viewing, and later months project forward from it — each month's payment comes off and interest goes on. Move a month and the balance moves with it. The summary ranks them by your chosen payoff strategy and shows a real payoff per card; the total payment feeds your cash outflow up top.</p>
+    <p class="ph" style="margin-top:0">Enter each card's balance, APR, and the payment you make to <em>that</em> card. Balances are per month: the one you type is your actual reading for the month you're viewing, and later months project forward from it — interest and new spending go on, and each month's payment comes off at the start of that month. Move a month and the balance moves with it. The summary ranks them by your chosen payoff strategy and shows a real payoff per card; the total payment feeds your cash outflow up top.</p>
     <div id="ccBalRows"></div>
     <div style="margin-top:10px"><button class="btn" onclick="ccbAdd()">+ Add card</button></div>
     <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
@@ -1066,10 +1066,12 @@ function balanceBreakdown(c,vi){
   const rate=(Number(c.apr)||0)/100/12;
   let bal=start;
   for(let v=from;v<vi;v++){
-    // The balance you typed is what you owe now, so that month's spending is already
-    // inside it - adding it again would double-count everything already logged. A
-    // payment for that month is still a plan, not yet made, so it does come off.
-    const chg=v>from?cardChargesFor(c,v):0, pay=cardPayFor(c,v), int=bal*rate;
+    // Payments land at the start of a month, so a month's own payment belongs to that
+    // month's balance - stepping v -> v+1 carries v's interest and spending, then takes
+    // v+1's payment off. The anchor month's payment is deliberately never applied: the
+    // balance you typed was read after you'd already paid, so it's baked in. Its charges
+    // are skipped for the same reason.
+    const chg=v>from?cardChargesFor(c,v):0, pay=cardPayFor(c,v+1), int=bal*rate;
     out.interest+=int; out.charges+=chg; out.payments+=pay; out.months++;
     bal=bal+int+chg-pay;
     if(bal<=0){bal=0;break;}
@@ -1498,7 +1500,7 @@ function renderCardBalances(){
     const bd=balanceBreakdown(c,selIdx), bal=bd.bal, isAct=balanceIsActual(c,selIdx);
     const balTitle=isAct
       ?`Your actual ${esc(mLabel)} balance. Later months project forward from here.`
-      :`Projected for ${esc(mLabel)} from your ${MON[idxToYM(bd.from).m]} balance of ${fmt(bd.fromBal)}, over ${bd.months} month${bd.months===1?'':'s'}: +${fmt(bd.interest)} interest, +${fmt(bd.charges)} new charges, −${fmt(bd.payments)} payments. Spending already logged in ${MON[idxToYM(bd.from).m]} is in that starting balance, so it isn't added again. Type your real statement balance to re-anchor here.`;
+      :`Projected for ${esc(mLabel)} from your ${MON[idxToYM(bd.from).m]} balance of ${fmt(bd.fromBal)}, over ${bd.months} month${bd.months===1?'':'s'}: +${fmt(bd.interest)} interest, +${fmt(bd.charges)} new charges, −${fmt(bd.payments)} payments. Each month's payment is taken at the start of that month, and whatever you'd already paid or spent by the time you read your ${MON[idxToYM(bd.from).m]} balance is inside it. Type your real statement balance to re-anchor here.`;
     return `<div class="ccbrow">
     <div><span class="lab">Card</span><input value="${esc(c.name)}" oninput="ccbInput('${c.id}','name',this.value)"></div>
     <div><span class="lab" style="cursor:help" title="${balTitle}">Balance $ <span class="btag${isAct?' act':''}" id="ccbtag_${c.id}">${isAct?'actual':'proj'}</span></span><input class="mono" type="number" inputmode="decimal" value="${bal?Math.round(bal*100)/100:''}" placeholder="0" title="${balTitle}" oninput="ccbBalInput('${c.id}',this.value)"></div>
