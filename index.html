@@ -68,6 +68,8 @@
   .sechead .tt{display:flex;align-items:center;gap:9px;font-family:ui-serif,'New York',Georgia,'Times New Roman',serif;font-size:18px}
   .sechead .tt .pd{width:11px;height:11px;border-radius:4px}
   .sechead .sectot{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;color:var(--mute);font-size:13px}
+  .sechead .sectot .lnkd{color:var(--faint);cursor:pointer;border-bottom:1px dotted var(--line)}
+  .sechead .sectot .lnkd:hover{color:var(--ink)}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);padding:7px 9px;border-bottom:1px solid var(--line);font-weight:600}
   td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -881,7 +883,7 @@ const SEED={
 };
 const VAR_DEFAULTS=['Energy','Phone','Groceries','Gas'];
 
-let S=null, selIdx=null, editing={sect:null,id:null}, editTypeTmp=null, addOpen={};
+let S=null, selIdx=null, editing={sect:null,id:null}, editTypeTmp=null, addOpen={}, doneOpen={};
 
 const mi=(y,m)=>y*12+m;
 function curIdx(){const n=new Date();return mi(n.getFullYear(),n.getMonth());}
@@ -984,8 +986,13 @@ function normalize(s){
   });
   // Which card new spending lands on. Charges aren't tagged per item, so one card
   // carries them all; '' means nobody does and balances roll on payments alone.
-  s.chargeCardId=String(s.chargeCardId||'');
-  if(s.chargeCardId&&!s.ccBalances.some(c=>c.id===s.chargeCardId))s.chargeCardId='';
+  // Absent means never chosen, so default to the first card - one card normally takes
+  // all the spending. '' means deliberately "No card", which must survive a reload.
+  if(s.chargeCardId==null)s.chargeCardId=s.ccBalances.length?s.ccBalances[0].id:'';
+  else{
+    s.chargeCardId=String(s.chargeCardId);
+    if(s.chargeCardId&&!s.ccBalances.some(c=>c.id===s.chargeCardId))s.chargeCardId='';
+  }
   return s;
 }
 function migrateV2(s){ // v2 had no ccplans and possibly no variable fields
@@ -1469,6 +1476,7 @@ function renderDonut(){
     `<div class="li"><span class="nm"><span class="pd" style="background:var(--card)"></span>Card charges</span><span class="vl">${fmt(sums.card)}</span></div>`;
 }
 
+window.toggleDone=(sect)=>{doneOpen[sect]=!doneOpen[sect];renderSections();};
 function renderSections(){document.getElementById('sections').innerHTML=SECTKEYS.map(sectionHTML).join('');}
 
 function renderCardBalances(){
@@ -1587,7 +1595,12 @@ window.ccbMonthInput=(id,val)=>{
   ccbRecalc();renderCards();renderProjection();
   clearTimeout(ccbT);ccbT=setTimeout(save,400);
 };
-window.ccbAdd=()=>{S.ccBalances.push({id:uid(),name:'Card',balance:0,apr:0,payment:0,payMonths:{},balanceMonths:{}});save();renderCardBalances();};
+window.ccbAdd=()=>{
+  const c={id:uid(),name:'Card',balance:0,apr:0,payment:0,payMonths:{},balanceMonths:{}};
+  S.ccBalances.push(c);
+  if(S.ccBalances.length===1&&!S.chargeCardId)S.chargeCardId=c.id;
+  save();renderCardBalances();
+};
 window.ccbDel=(id)=>{
   const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
   if(!confirm(`Delete "${c.name}"? This removes its balance, APR, and payment history — this can't be undone.`))return;
@@ -1599,13 +1612,19 @@ function sectionHTML(sect){
   const cfg=SECT[sect],tot=sectionSum(sect,selIdx),m=MON[idxToYM(selIdx).m];
   const pausedN=S[sect].filter(x=>x.on===false).length;
   const pausedTxt=pausedN?` · <span style="color:var(--faint)">${pausedN} paused</span>`:'';
-  const rows=[...S[sect]].sort((a,b)=>{
+  // Anything already finished - a past one-time charge, a paid-off plan - contributes $0
+  // to this month, so it only clutters the list. Hide it behind a count you can expand.
+  const isDone=it=>evalItem(it,sect,selIdx).status==='done';
+  const doneN=S[sect].filter(isDone).length, showDone=!!doneOpen[sect];
+  const doneTxt=doneN?` · <span class="lnkd" onclick="toggleDone('${sect}')" title="${showDone?'Hide':'Show'} items that already finished">${doneN} logged${showDone?' — hide':''}</span>`:'';
+  const listed=showDone?[...S[sect]]:S[sect].filter(it=>!isDone(it));
+  const rows=listed.sort((a,b)=>{
     const da=dayOf(a,sect,selIdx),db=dayOf(b,sect,selIdx);
     if(da==null&&db==null)return 0;
     if(da==null)return 1;
     if(db==null)return -1;
     return da-db;
-  }).map(it=>rowHTML(sect,it)).join('')||`<tr><td colspan="5" class="empty">${emptyMsg(sect)}</td></tr>`;
+  }).map(it=>rowHTML(sect,it)).join('')||`<tr><td colspan="5" class="empty">${doneN?`Nothing due in ${m} — ${doneN} item${doneN>1?'s':''} here already finished.`:emptyMsg(sect)}</td></tr>`;
   const ths=sect==='recurring'
     ?`<th>Item</th><th>Due day</th><th>Type</th><th class="amt">${m} $</th><th style="width:60px"></th>`
     :sect==='payin4'
@@ -1614,7 +1633,7 @@ function sectionHTML(sect){
     ?`<th>Item</th><th>Date</th><th>Status</th><th class="amt">Amount</th><th style="width:60px"></th>`
     :`<th>Item</th><th>Next date</th><th>Payments left</th><th class="amt">Monthly $</th><th style="width:60px"></th>`;
   return `<div class="section panel">
-    <div class="sechead"><div class="tt"><span class="pd" style="background:${cfg.color}"></span>${cfg.title}</div><div class="sectot">${fmt(tot)} / mo · ${m}${pausedTxt}</div></div>
+    <div class="sechead"><div class="tt"><span class="pd" style="background:${cfg.color}"></span>${cfg.title}</div><div class="sectot">${fmt(tot)} / mo · ${m}${pausedTxt}${doneTxt}</div></div>
     <table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>
     ${addFormHTML(sect)}
     <div style="margin-top:10px"><button class="btn" onclick="toggleAdd('${sect}')">${addOpen[sect]?'Cancel':'+ Add '+addLabel(sect)}</button></div>
