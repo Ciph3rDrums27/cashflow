@@ -155,7 +155,7 @@
   .chip .pd{width:8px;height:8px;border-radius:3px}
   .chip .nm{font-size:13px}
   .chip .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--mute)}
-  .ccbrow{display:grid;grid-template-columns:1.1fr .7fr .5fr .7fr .7fr .7fr auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+  .ccbrow{display:grid;grid-template-columns:1fr .68fr .45fr .62fr .62fr .68fr .62fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
   .ccbrow:last-of-type{border-bottom:none}
   .ccbrow .lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);display:block;margin-bottom:3px}
   .ccbrow input{width:100%}
@@ -755,7 +755,7 @@
 
   <div class="panel" id="ccBalPanel" style="margin-top:16px">
     <div class="sechead"><div class="tt"><span class="pd" style="background:var(--card)"></span>Credit card balances</div><div class="sectot" id="ccBalTot"></div></div>
-    <p class="ph" style="margin-top:0">Enter each card's balance, APR, and the payment you make to <em>that</em> card. Balances are per month: the one you type is your actual reading for the month you're viewing, and later months project forward from it — each month's payment comes off and interest goes on. Move a month and the balance moves with it. The summary ranks them by your chosen payoff strategy and shows a real payoff per card; the total payment feeds your cash outflow up top.</p>
+    <p class="ph" style="margin-top:0">Enter each card's balance, APR, and the payment you make to <em>that</em> card. Balances are per month. Type your real balance for the month you're viewing; that month's payment comes off it right away ("after pay"), and the next month picks up from there with interest added. Enter a payment and the numbers move immediately. The summary ranks them by your chosen payoff strategy and shows a real payoff per card; the total payment feeds your cash outflow up top.</p>
     <div id="ccBalRows"></div>
     <div style="margin-top:10px"><button class="btn" onclick="ccbAdd()">+ Add card</button></div>
     <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
@@ -1047,25 +1047,43 @@ function balanceIsActual(c,vi){return !!(c.balanceMonths&&c.balanceMonths[ymKey(
 // Tracked spend that bills to a card in month vi: CC plans + card charges. This is the
 // app's own "accrues to card balance" grouping (the donut's On-credit-card total).
 function monthlyChargesFor(vi){return sectionSum('ccplans',vi)+sectionSum('card',vi);}
-function cardChargesFor(c,vi){return S.chargeCardId&&c.id===S.chargeCardId?monthlyChargesFor(vi):0;}
-function balanceFor(c,vi){
+function cardChargesFor(c,vi){
+  // Spending through the current month has already hit the balance you're reading off
+  // your statement, so only months still ahead add new charges on top.
+  if(!S.chargeCardId||c.id!==S.chargeCardId||vi<=curIdx())return 0;
+  return monthlyChargesFor(vi);
+}
+// Walks the roll-forward and keeps the running parts, so the projection can show its
+// own arithmetic. balanceFor is just the resulting balance.
+function balanceBreakdown(c,vi){
   const keys=balAnchors(c);
-  let from,bal;
-  if(!keys.length){from=curIdx();bal=Number(c.balance)||0;}
+  let from,raw;
+  if(!keys.length){from=curIdx();raw=Number(c.balance)||0;}
   else{
     const prior=keys.filter(k=>balKeyIdx(k)<=vi);
     // before the earliest reading there is nothing to project from, so hold it flat
     const use=prior.length?prior[prior.length-1]:keys[0];
-    from=balKeyIdx(use);bal=Number(c.balanceMonths[use])||0;
+    from=balKeyIdx(use);raw=Number(c.balanceMonths[use])||0;
   }
-  if(vi<=from)return Math.max(0,bal);
+  const start=Math.max(0,raw);
+  const out={from,fromBal:start,interest:0,charges:0,payments:0,months:0,bal:start};
+  if(vi<=from)return out;
   const rate=(Number(c.apr)||0)/100/12;
+  let bal=start;
   for(let v=from;v<vi;v++){
-    bal=bal+bal*rate+cardChargesFor(c,v)-cardPayFor(c,v);
-    if(bal<=0)return 0;
+    // A month's payment comes off that month's balance, then interest accrues on what's
+    // left and any new spending lands on top. That carry-over is the next month's balance.
+    const pay=cardPayFor(c,v), after=Math.max(0,bal-pay), int=after*rate, chg=cardChargesFor(c,v);
+    out.interest+=int; out.charges+=chg; out.payments+=pay; out.months++;
+    bal=after+int+chg;
+    if(bal<=0){bal=0;break;}
   }
-  return bal;
+  out.bal=bal;
+  return out;
 }
+function balanceFor(c,vi){return balanceBreakdown(c,vi).bal;}
+// What you still owe once this month's payment goes through - and what next month builds on.
+function balanceAfterPay(c,vi){return Math.max(0,balanceFor(c,vi)-cardPayFor(c,vi));}
 function cardPaymentTotal(vi){return (S.ccBalances||[]).reduce((s,c)=>s+cardPayFor(c,vi),0);}
 function updateCardPayHeader(){const el=document.getElementById('cardpayTot');if(el)el.textContent=fmt0(cardPaymentTotal(selIdx));}
 async function save(){try{await store.set(KEY,JSON.stringify(S));flash();}catch(e){console.error(e);}}
@@ -1483,16 +1501,17 @@ function renderCardBalances(){
   const key=ymKey(selIdx), mLabel=MON[idxToYM(selIdx).m];
   const rows=S.ccBalances.map(c=>{
     const hasOv=c.payMonths&&c.payMonths[key]!=null;
-    const bal=balanceFor(c,selIdx), isAct=balanceIsActual(c,selIdx);
+    const bd=balanceBreakdown(c,selIdx), bal=bd.bal, isAct=balanceIsActual(c,selIdx);
     const balTitle=isAct
       ?`Your actual ${esc(mLabel)} balance. Later months project forward from here.`
-      :`Projected for ${esc(mLabel)} from your last actual balance, minus payments plus interest. Type your real statement balance to correct it from this month on.`;
+      :`Projected for ${esc(mLabel)} from your ${MON[idxToYM(bd.from).m]} balance of ${fmt(bd.fromBal)}, over ${bd.months} month${bd.months===1?'':'s'}: −${fmt(bd.payments)} payments, +${fmt(bd.interest)} interest, +${fmt(bd.charges)} new charges. Type your real balance here to correct it from this month on.`;
     return `<div class="ccbrow">
     <div><span class="lab">Card</span><input value="${esc(c.name)}" oninput="ccbInput('${c.id}','name',this.value)"></div>
     <div><span class="lab" style="cursor:help" title="${balTitle}">Balance $ <span class="btag${isAct?' act':''}" id="ccbtag_${c.id}">${isAct?'actual':'proj'}</span></span><input class="mono" type="number" inputmode="decimal" value="${bal?Math.round(bal*100)/100:''}" placeholder="0" title="${balTitle}" oninput="ccbBalInput('${c.id}',this.value)"></div>
     <div><span class="lab">APR %</span><input class="mono" type="number" inputmode="decimal" value="${c.apr||''}" placeholder="0" oninput="ccbInput('${c.id}','apr',this.value)"></div>
     <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Your normal monthly payment to this card. Used every month by default, and always used for the payoff estimate below.">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" title="Your normal monthly payment to this card. Used every month by default, and always used for the payoff estimate below." oninput="ccbInput('${c.id}','payment',this.value)"></div>
     <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Doesn't affect the payoff estimate.">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${hasOv?c.payMonths[key]:''}" placeholder="${c.payment||0}" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Doesn't affect the payoff estimate." oninput="ccbMonthInput('${c.id}',this.value)"></div>
+    <div><span class="lab" style="color:var(--income);cursor:help" title="What's left on this card once ${esc(mLabel)}'s payment goes through. This is the figure next month builds on.">After pay</span><span class="intv" id="ccbafter_${c.id}" style="color:var(--income)">$0.00</span></div>
     <div><span class="lab">Interest/mo</span><span class="intv" id="ccbint_${c.id}">$0.00</span></div>
     <div style="text-align:right"><button class="icon-btn" title="remove" onclick="ccbDel('${c.id}')">🗑</button></div>
   </div>`;}).join('')||'<div class="empty">No cards yet — add a credit card to track its balance and payoff.</div>';
@@ -1519,6 +1538,7 @@ function ccbRecalc(){
     const bal=balanceFor(c,selIdx); bals[c.id]=bal;
     const i=bal*(Number(c.apr)||0)/100/12;
     const span=document.getElementById('ccbint_'+c.id); if(span)span.textContent=fmt(i);
+    const aft=document.getElementById('ccbafter_'+c.id); if(aft)aft.textContent=fmt(balanceAfterPay(c,selIdx));
     // the actual/proj marker can flip without a full row re-render, so patch it in place
     const tag=document.getElementById('ccbtag_'+c.id);
     if(tag){const act=balanceIsActual(c,selIdx);tag.textContent=act?'actual':'proj';tag.classList.toggle('act',act);}
@@ -1526,7 +1546,9 @@ function ccbRecalc(){
   });
   updateCardPayHeader();
   document.getElementById('ccBalTot').innerHTML=`${fmt(totB)} balance ${mLab} · ${fmt(totI)}/mo interest · ${fmt(totP)}/mo paid`;
-  const charging=sectionSum('ccplans',selIdx)+sectionSum('card',selIdx);
+  // the ongoing spend the projections actually apply - a future month, so past one-off
+  // purchases already sitting in your balance don't inflate it
+  const charging=monthlyChargesFor(Math.max(selIdx,curIdx())+1);
   const active=S.ccBalances.filter(c=>bals[c.id]>0);
   let html;
   if(!active.length){html='Enter a balance, APR, and a monthly payment per card to see payoff times and which card to attack first.';}
@@ -1536,7 +1558,7 @@ function ccbRecalc(){
       :(Number(b.apr)||0)-(Number(a.apr)||0));
     const target=ranked[0];
     const lines=ranked.map(c=>{
-      const chg=cardChargesFor(c,selIdx);
+      const chg=cardChargesFor(c,Math.max(selIdx,curIdx())+1); // ongoing monthly spend
       const po=payoffOf(bals[c.id],Number(c.apr),Number(c.payment),chg);
       let t;
       if(po.state==='nopay')t=`set a payment`;
@@ -1550,7 +1572,7 @@ function ccbRecalc(){
       ?`<div style="margin-top:8px"><strong>Snowball:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${fmt0(bals[target.id])} — your smallest balance, for a quick win). Clear it, then roll its payment onto the next-smallest balance.</div>`
       :`<div style="margin-top:8px"><strong>Avalanche:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${(Number(target.apr)||0).toFixed(2)}% — your most expensive). Clear it, then roll its payment onto the next-highest APR.</div>`;
     const chgCard=S.ccBalances.find(c=>c.id===S.chargeCardId);
-    const note=charging>0?`<div style="margin-top:6px;color:var(--mute)">You're charging ${fmt0(charging)}/mo in tracked plans + charges — ${chgCard
+    const note=charging>0?`<div style="margin-top:6px;color:var(--mute)">You're charging about ${fmt0(charging)}/mo in recurring plans + charges — ${chgCard
       ?`added back onto <strong>${esc(chgCard.name)}</strong> each month in the projections above.`
       :`not in the projected balances above. Pick the card you actually spend on under "new charges land on" so they get added back.`}</div>`:'';
     html=`<div style="margin-bottom:6px">${fmt0(totB)} total as of ${mLab} at ${fmt0(totI)}/mo interest:</div>${lines}${strat}${note}`;
