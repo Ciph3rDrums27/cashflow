@@ -8,6 +8,9 @@ on:
     branches: [main]
     paths:
       - "index.html"
+      - "sw.js"
+      - "manifest.webmanifest"
+      - "icon.svg"
       - ".github/workflows/deploy.yml"
   workflow_dispatch: {}
 
@@ -32,14 +35,22 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Upload index.html to S3
+      - name: Upload site files to S3
         run: |
-          aws s3 cp index.html "s3://${{ vars.SITE_BUCKET }}/index.html" \
-            --content-type "text/html; charset=utf-8" \
-            --cache-control "public, max-age=300"
+          upload() {  # $1 = bucket, $2 = region
+            aws s3 cp index.html "s3://$1/index.html" --region "$2" --content-type "text/html; charset=utf-8" --cache-control "public, max-age=300"
+            aws s3 cp sw.js "s3://$1/sw.js" --region "$2" --content-type "text/javascript; charset=utf-8" --cache-control "no-cache"
+            aws s3 cp manifest.webmanifest "s3://$1/manifest.webmanifest" --region "$2" --content-type "application/manifest+json" --cache-control "public, max-age=300"
+            aws s3 cp icon.svg "s3://$1/icon.svg" --region "$2" --content-type "image/svg+xml" --cache-control "public, max-age=86400"
+          }
+          upload "${{ vars.SITE_BUCKET }}" "${{ vars.AWS_REGION }}"
+          # Failover copy runs only once SITE_BUCKET_FAILOVER exists (it isn't in Terraform yet).
+          if [ -n "${{ vars.SITE_BUCKET_FAILOVER }}" ]; then
+            upload "${{ vars.SITE_BUCKET_FAILOVER }}" us-east-1
+          fi
 
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \
             --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
-            --paths "/index.html" "/"
+            --paths "/index.html" "/" "/sw.js" "/manifest.webmanifest" "/icon.svg"

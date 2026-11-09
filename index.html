@@ -1,5 +1,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0c0e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Cashflow Forecast</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
   :root{
     --bg:#0c0e1a;--panel:#1a1f2e;--panel2:#232a3d;--line:#333c52;
@@ -155,7 +161,7 @@
   .chip .pd{width:8px;height:8px;border-radius:3px}
   .chip .nm{font-size:13px}
   .chip .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--mute)}
-  .ccbrow{display:grid;grid-template-columns:1fr .68fr .45fr .62fr .62fr .68fr .62fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+  .ccbrow{display:grid;grid-template-columns:1fr .68fr .45fr .42fr .62fr .62fr .68fr .62fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
   .ccbrow:last-of-type{border-bottom:none}
   .ccbrow .lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);display:block;margin-bottom:3px}
   .ccbrow input{width:100%}
@@ -163,6 +169,92 @@
   .ccbrow .btag{font-size:9px;letter-spacing:.3px;color:var(--faint);border:1px solid var(--line);border-radius:20px;padding:0 5px;text-transform:none}
   .ccbrow .btag.act{color:var(--income);border-color:rgba(63,174,106,.45)}
   @media(max-width:760px){.ccbrow{grid-template-columns:1fr 1fr 1fr}.ccbrow>div:last-child{grid-column:1/-1;text-align:right;margin-top:2px}}
+  [hidden]{display:none!important}
+  .modal .ph{color:var(--mute);font-size:12.5px;margin:0 0 12px;line-height:1.5}
+  header.top{position:relative}
+  .banner{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:10px 12px;margin:0 0 14px;font-size:13px;line-height:1.5}
+  .banner.warn{border-left-color:var(--card)}
+  .banner code{font-size:11px;word-break:break-all}
+  .logbtn{margin-left:4px}
+  .viewsw{display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none}
+  .viewsw button{white-space:nowrap}
+  .view>.panel{margin-bottom:16px}
+  .hero-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:24px}
+  .hero-lab{font-size:10.5px;text-transform:uppercase;letter-spacing:1.1px;color:var(--faint);margin-bottom:6px}
+  .hero-num{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:40px;font-weight:600;letter-spacing:-1.5px;color:var(--income);line-height:1.1}
+  .hero-num.neg{color:var(--card)}
+  .hero-sub{font-size:13.5px;margin-top:8px;line-height:1.5}
+  .hero-meta{font-size:12px;color:var(--mute);margin-top:6px;line-height:1.5}
+  .hero-notes{margin-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--mute);line-height:1.5;border-top:1px solid var(--line);padding-top:10px}
+  .hero-notes strong,.hero-sub strong{color:var(--ink)}
+  .hero-side .dit{padding:5px 0;border-bottom:1px solid var(--line)}
+  .hero-side .dit:last-of-type{border-bottom:none}
+  .warnt{color:var(--gold)} .okt{color:var(--income)}
+  .lnk{background:none;border:none;color:var(--recur);cursor:pointer;padding:0;font:inherit;text-decoration:underline;text-underline-offset:2px}
+  .formrow{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+  .formrow label{display:flex;flex-direction:column;gap:5px;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint)}
+  .formrow.stack{flex-direction:column;align-items:stretch}
+  .formrow.stack input,.formrow.stack select{width:100%}
+  .chk{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:none;color:transparent;cursor:pointer;font-size:12px;line-height:1;flex:0 0 auto;padding:0}
+  .chk:hover{border-color:var(--income);color:var(--income)}
+  .chk.on{background:var(--income);border-color:var(--income);color:#0c0e1a}
+  .dit .nmx{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .dit.paid .nmx,.dit.paid .vl{text-decoration:line-through;color:var(--faint)}
+  .dit .pcdt{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:11.5px;color:var(--faint);flex:0 0 50px}
+  .pcp .dit{padding:3px 0}
+  .pcbal{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 10px;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:12px;color:var(--mute);margin-top:6px}
+  .pcbal .neg{color:var(--card)}
+  .day.today{background:rgba(227,168,63,.07);border-radius:8px}
+  .day.today .daynum .o{color:var(--gold)}
+  .edrow2{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:12px;color:var(--mute)}
+  .edrow2 label{display:flex;align-items:center;gap:6px}
+  .imp-row select{font-size:12px;padding:4px 6px;max-width:150px;flex:0 0 auto}
+  input.invalid{border-color:var(--card)}
+  @media(max-width:640px){
+    .wrap{padding:16px 14px 80px}
+    h1{font-size:23px}
+    .sub{display:none}
+    header.top{gap:10px;padding-bottom:12px;margin-bottom:14px}
+    .navmonth{width:100%;gap:8px}
+    .navmonth .mlabel{min-width:0;flex:1;font-size:18px;white-space:nowrap}
+    .saved{position:absolute;right:0;top:6px}
+    .logbtn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.5);border-radius:24px;padding:12px 20px;font-size:15px;margin:0}
+    .nbtn{width:44px;height:44px}
+    .today-btn,.logbtn{min-height:44px}
+    input,select{font-size:16px}
+    .btn,.btn.sm{min-height:42px;font-size:14px}
+    .icon-btn{min-width:40px;min-height:40px;font-size:16px}
+    .chk{width:30px;height:30px;font-size:14px}
+    .viewsw{margin-bottom:14px}
+    .viewsw button{padding:10px 12px;font-size:14px}
+    .cards{grid-template-columns:1fr 1fr;gap:8px}
+    .card{padding:12px}
+    .card .big{font-size:19px}
+    .panel{padding:14px}
+    .hero-grid{grid-template-columns:1fr;gap:16px}
+    .hero-num{font-size:34px}
+    .donutwrap{flex-direction:column;align-items:stretch}
+    #donut{align-self:center}
+    table,thead,tbody,tr,td{display:block}
+    thead{display:none}
+    tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+    td{border:none;padding:2px 0}
+    td:first-child{flex:1 1 100%;font-size:15px}
+    td.amt{margin-left:auto;font-size:14.5px}
+    td.editcell{flex:1 1 100%}
+    td.editcell input,td.editcell select{padding:9px 10px}
+    .addrow{grid-template-columns:1fr !important}
+    .ccbrow{grid-template-columns:1fr 1fr}
+    .formrow label{flex:1 1 140px}
+    .formrow input,.formrow select{width:100%}
+    .modal{padding:16px}
+    .imp-row{flex-wrap:wrap}
+    .imp-row .n{flex:1 1 60%}
+    .daynum{flex:0 0 40px}
+    .daysub{display:none}
+    .sechead .sectot{font-size:12px}
+    .seg button{padding:10px 14px}
+  }
   #bgscene{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
 </style>
 
@@ -693,136 +785,159 @@
   <header class="top">
     <div>
       <h1>Cash<span>flow</span> Forecast</h1>
-      <div class="sub">Installments decrement automatically · variable bills track per month · scroll to forecast or look back</div>
+      <div class="sub">What's coming in, what's going out, and what's safe to spend</div>
     </div>
     <div class="navmonth">
-      <button class="nbtn" id="prevM">‹</button>
+      <button class="nbtn" id="prevM" aria-label="Previous month">‹</button>
       <div class="mlabel" id="mlabel">—<small id="msub"></small><span class="ovr-dot" id="mOvrDot"></span></div>
-      <button class="nbtn" id="nextM">›</button>
+      <button class="nbtn" id="nextM" aria-label="Next month">›</button>
       <button class="today-btn" id="todayBtn">Today</button>
-    </div>
-    <div class="income-box">
-      <label title="Your net pay per paycheck. Monthly take-home is calculated from how many paydays land in each month.">Paycheck&nbsp;$</label>
-      <input id="paycheck" class="mono" type="number" inputmode="decimal" placeholder="0" title="Net amount of one paycheck">
-      <label style="font-size:11px;color:var(--faint)">biweekly from</label>
-      <input id="payAnchor" class="mono" type="date" style="width:140px" title="Any known payday — paydays repeat every 2 weeks from this date">
-      <span id="incMonthly" class="mono" style="font-size:11px;color:var(--faint)"></span>
-      <label class="incov-lab" id="incOvLbl">— override</label>
-      <input id="incOverride" class="mono" type="number" inputmode="decimal" placeholder="default" title="Override this month's total take-home">
-      <button class="incov-clear" id="incOvClear" title="Clear this month's override">✕</button>
-      <label style="margin-left:6px;color:var(--ccplan)">CC payment</label>
-      <span id="cardpayTot" class="mono" style="color:var(--ccplan);min-width:64px;display:inline-block">$0</span>
-      <span style="font-size:10.5px;color:var(--faint)">total · set per card below</span>
+      <button class="btn logbtn" onclick="openLog()">+ Log</button>
       <span class="saved" id="savedFlag">saved ✓</span>
     </div>
   </header>
+  <div id="banner" class="banner" hidden></div>
 
-  <div class="viewsw">
-    <button id="vwForecast" class="active" onclick="setView('forecast')">📊 Forecast</button>
-    <button id="vwCalendar" onclick="setView('calendar')">🗓 Calendar</button>
-  </div>
+  <nav class="viewsw" id="viewsw">
+    <button data-view="home" class="active" onclick="setView('home')">Home</button>
+    <button data-view="calendar" onclick="setView('calendar')">Calendar</button>
+    <button data-view="bills" onclick="setView('bills')">Bills</button>
+    <button data-view="cards" onclick="setView('cards')">Cards</button>
+    <button data-view="settings" onclick="setView('settings')">Settings</button>
+  </nav>
 
-  <div id="forecastView" class="view active">
-  <div class="cards" id="cards"></div>
-
-  <div class="charts">
-    <div class="panel">
-      <h2>12-month projection</h2>
-      <p class="ph">Wide bar = cash leaving checking (recurring + installments + Pay in 4); green cap = take-home left. Narrow bar = spend billed to your credit card, shown separately. Hover a bar for the breakdown, click to jump to that month.</p>
-      <div class="projwrap"><div id="proj"></div><div id="projTip" class="projtip"></div></div>
-      <div class="chartlegend">
-        <span><span class="pd" style="background:var(--recur)"></span>Recurring (cash)</span>
-        <span><span class="pd" style="background:var(--affirm)"></span>Installments (cash)</span>
-        <span><span class="pd" style="background:var(--pay4)"></span>Pay in 4 (cash)</span>
-        <span><span class="pd" style="background:var(--oneoff)"></span>One-time (cash)</span>
-        <span><span class="pd" style="background:var(--ccplan)"></span>CC plans (card)</span>
-        <span><span class="pd" style="background:var(--card)"></span>Card charges (card)</span>
-        <span><span class="pd" style="background:var(--income);opacity:.5"></span>Cash remaining</span>
+  <div id="homeView" class="view active">
+    <div class="panel hero" id="home"></div>
+    <div class="cards" id="cards"></div>
+    <div class="charts">
+      <div class="panel">
+        <h2>12-month projection</h2>
+        <p class="ph">Wide bar = cash leaving checking; green cap = take-home left over. Narrow bar = spending charged to your cards. Tap or hover a bar for the breakdown; tap to jump to that month.</p>
+        <div class="projwrap"><div id="proj"></div><div id="projTip" class="projtip"></div></div>
+        <div class="chartlegend">
+          <span><span class="pd" style="background:var(--recur)"></span>Recurring</span>
+          <span><span class="pd" style="background:var(--affirm)"></span>Installments</span>
+          <span><span class="pd" style="background:var(--pay4)"></span>Pay in 4</span>
+          <span><span class="pd" style="background:var(--oneoff)"></span>One-time</span>
+          <span><span class="pd" style="background:var(--ccplan);opacity:.55"></span>Card payments</span>
+          <span><span class="pd" style="background:var(--card)"></span>Charged to cards</span>
+          <span><span class="pd" style="background:var(--income);opacity:.5"></span>Cash left</span>
+        </div>
+        <div class="insight" id="insight"></div>
       </div>
-      <div class="insight" id="insight"></div>
-    </div>
-    <div class="panel">
-      <h2>Where it goes</h2>
-      <p class="ph" id="compSub">Composition this month</p>
-      <div class="donutwrap">
-        <div id="donut"></div>
-        <div class="legend" id="donutLegend"></div>
+      <div class="panel">
+        <h2>Where your cash goes</h2>
+        <p class="ph" id="compSub">Cash leaving checking this month</p>
+        <div class="donutwrap">
+          <div id="donut"></div>
+          <div class="legend" id="donutLegend"></div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div id="sections"></div>
+  <div id="billsView" class="view"><div id="sections"></div></div>
 
-  <div class="panel" id="ccBalPanel" style="margin-top:16px">
-    <div class="sechead"><div class="tt"><span class="pd" style="background:var(--card)"></span>Credit card balances</div><div class="sectot" id="ccBalTot"></div></div>
-    <p class="ph" style="margin-top:0">Enter each card's balance, APR, and the payment you make to <em>that</em> card. Balances are per month. Type your real balance for the month you're viewing; that month's payment comes off it right away ("after pay"), and the next month picks up from there with interest added. Enter a payment and the numbers move immediately. The summary ranks them by your chosen payoff strategy and shows a real payoff per card; the total payment feeds your cash outflow up top.</p>
-    <div id="ccBalRows"></div>
-    <div style="margin-top:10px"><button class="btn" onclick="ccbAdd()">+ Add card</button></div>
-    <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
-      <span style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px">Payoff strategy</span>
-      <div class="seg" id="payoffStratSeg">
-        <button id="stratAvalanche" class="active" onclick="setPayoffStrategy('avalanche')" title="Attack the highest-APR balance first — minimizes total interest paid">Avalanche</button>
-        <button id="stratSnowball" onclick="setPayoffStrategy('snowball')" title="Attack the smallest balance first — faster wins, can be easier to stick with">Snowball</button>
+  <div id="cardsView" class="view">
+    <div class="panel" id="planPanel">
+      <h2>Debt-free plan</h2>
+      <p class="ph">Pick when you want your cards paid off and how much you'll let yourself put on them each month. The plan below checks your scheduled payments against both.</p>
+      <div class="formrow">
+        <label>Debt-free by<input id="planTarget" type="month" onchange="setPlan('target',this.value)"></label>
+        <label>Card spending limit $/mo<input id="planLimit" class="mono" type="number" inputmode="decimal" placeholder="none" oninput="setPlan('spendLimit',this.value)"></label>
       </div>
-      <span style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.6px;margin-left:10px">New charges land on</span>
-      <select id="chargeCardSel" style="font-size:12.5px;padding:6px 8px" title="The card you actually spend on. Its projected balance gets your tracked CC plans + card charges added back each month; frozen or paid-in-full cards should stay off this." onchange="setChargeCard(this.value)"></select>
+      <div class="insight" id="planOut"></div>
     </div>
-    <div class="insight" id="ccBalSummary" style="border-left-color:var(--card)"></div>
-  </div>
 
-  <div class="toolbar">
-    <input type="file" id="stmtFile" accept=".csv,text/csv" style="display:none">
-    <button class="btn sm" id="stmtBtn">Import statement (CSV)</button>
-    <input type="file" id="importFile" accept="application/json,.json" style="display:none">
-    <button class="btn sm" id="importBtn">Import JSON</button>
-    <button class="btn sm" id="exportBtn">Export JSON</button>
-  </div>
+    <div class="panel" id="ccBalPanel">
+      <div class="sechead"><div class="tt"><span class="pd" style="background:var(--card)"></span>Credit card balances</div><div class="sectot" id="ccBalTot"></div></div>
+      <p class="ph" style="margin-top:0">Type a card's real balance in the month you read it; later months project forward with interest, new charges, and your payments. Leave a month's payment blank to use the normal one.</p>
+      <div id="ccBalRows"></div>
+      <div style="margin-top:10px"><button class="btn" onclick="ccbAdd()">+ Add card</button></div>
+      <div class="formrow" style="margin-top:14px">
+        <label>Payoff order<span class="seg" id="payoffStratSeg">
+          <button id="stratAvalanche" class="active" onclick="setPayoffStrategy('avalanche')" title="Highest APR first — least interest">Avalanche</button>
+          <button id="stratSnowball" onclick="setPayoffStrategy('snowball')" title="Smallest balance first — quickest wins">Snowball</button>
+        </span></label>
+        <label>New charges land on<select id="chargeCardSel" title="The card you actually spend on. Its projected balance gets your card spending added each month." onchange="setChargeCard(this.value)"></select></label>
+      </div>
+      <div class="insight" id="ccBalSummary" style="border-left-color:var(--card)"></div>
+      <div class="formrow" style="margin-top:14px">
+        <label>What if I pay extra $/mo<input id="extraPay" class="mono" type="number" inputmode="decimal" placeholder="0" oninput="setPlan('extra',this.value)"></label>
+      </div>
+      <div class="insight" id="whatIfOut" style="border-left-color:var(--gold)"></div>
+    </div>
   </div>
 
   <div id="calendarView" class="view">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-      <div class="seg">
-        <button id="h1btn" class="active" onclick="setHalf(1)">1st – 15th</button>
-        <button id="h2btn" onclick="setHalf(2)">16th – end</button>
-      </div>
-      <div style="font-size:12px;color:var(--mute)" id="calMonthLbl"></div>
-    </div>
-
+    <div style="font-size:12px;color:var(--mute);margin-bottom:12px" id="calMonthLbl"></div>
     <div class="cards" id="calCards"></div>
-
     <div class="panel">
       <h2 id="pcTitle">Paycheck coverage</h2>
       <p class="ph" id="pcSub"></p>
       <div id="pcList"></div>
     </div>
-
     <div class="panel">
       <h2 id="tlTitle">Outflow timeline</h2>
-      <p class="ph">Bar height scaled to amount (square-root, so small bills stay visible). Green dashes = payday.</p>
+      <p class="ph">Bar height scaled to amount (square-root, so small bills stay visible). Green dashes = payday, gold = today.</p>
       <div id="timeline"></div>
       <div class="legend2">
         <span><span class="pd" style="background:var(--recur)"></span>Recurring</span>
-        <span><span class="pd" style="background:var(--affirm)"></span>Affirm</span>
-        <span><span class="pd" style="background:var(--ccplan)"></span>CC plan</span>
+        <span><span class="pd" style="background:var(--affirm)"></span>Installments</span>
+        <span><span class="pd" style="background:var(--pay4)"></span>Pay in 4</span>
+        <span><span class="pd" style="background:var(--ccplan)"></span>Card payment</span>
         <span><span class="pd" style="background:var(--oneoff)"></span>One-time</span>
-        <span><span class="pd" style="background:var(--card)"></span>Card</span>
         <span><span class="pd" style="background:var(--income)"></span>Payday</span>
       </div>
     </div>
-
     <div class="panel">
       <h2 id="listTitle">Day by day</h2>
       <p class="ph" id="listSub"></p>
       <div id="days"></div>
     </div>
-
     <div class="panel">
       <h2>Anytime this month</h2>
-      <p class="ph">Variable spend with no fixed due-day — happens across the whole month, not on one day. Add a due-day to these items to place them on the calendar.</p>
+      <p class="ph">Everyday spending with no fixed due day. Use + Log to record what you spend; the estimate is still counted until the month ends.</p>
       <div class="anytime" id="anytime"></div>
     </div>
   </div>
+
+  <div id="settingsView" class="view">
+    <div class="panel">
+      <h2>Checking balance</h2>
+      <p class="ph">Enter what your bank shows now. Anything dated on this day is treated as already posted; everything after it is projected.</p>
+      <div class="formrow">
+        <label>Balance $<input id="chkAmt" class="mono" type="number" inputmode="decimal" placeholder="0.00"></label>
+        <label>As of<input id="chkDate" type="date"></label>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Pay &amp; income</h2>
+      <div class="formrow">
+        <label title="Your net pay per paycheck">Paycheck $<input id="paycheck" class="mono" type="number" inputmode="decimal" placeholder="0"></label>
+        <label title="Any known payday — paydays repeat every 2 weeks from this date">A recent payday<input id="payAnchor" type="date"></label>
+      </div>
+      <div class="formrow">
+        <label><span id="incOvLbl">Take-home</span><span style="display:flex;gap:6px;align-items:center"><input id="incOverride" class="mono" type="number" inputmode="decimal" placeholder="default" title="This month's actual take-home"><button class="incov-clear" id="incOvClear" title="Clear this month's take-home">✕</button></span></label>
+      </div>
+      <p class="note-block" id="incMonthly"></p>
+      <p class="note-block" id="incCarry"></p>
+    </div>
+    <div class="panel">
+      <h2>Backup &amp; import</h2>
+      <p class="ph" id="backupInfo"></p>
+      <div class="toolbar" style="justify-content:flex-start;margin-top:8px">
+        <button class="btn" id="exportBtn">Export backup</button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+        <button class="btn sm" id="importBtn">Import backup</button>
+        <input type="file" id="stmtFile" accept=".csv,text/csv" style="display:none">
+        <button class="btn sm" id="stmtBtn">Import bank statement (CSV)</button>
+        <button class="btn sm" id="restoreBtn" onclick="restorePrev()" hidden>Undo last import</button>
+      </div>
+      <p class="note-block">Your data lives only in this browser. Export a backup regularly, and use it to move your data to another device.</p>
+    </div>
   </div>
+</div>
 
 <script>
 const SECT={
@@ -840,9 +955,10 @@ const MONL=['January','February','March','April','May','June','July','August','S
 const fmt=n=>'$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmt0=n=>(n<0?'-':'')+'$'+Math.round(Math.abs(Number(n)||0)).toLocaleString('en-US');
 const KEY='cashflow:v3', OLDKEY='cashflow:v2';
-const META={affirm:{lab:'Installment',col:'var(--affirm)'},payin4:{lab:'Pay in 4',col:'var(--pay4)'},ccplans:{lab:'CC plan',col:'var(--ccplan)'},recurring:{lab:'Recurring',col:'var(--recur)'},oneoff:{lab:'One-time',col:'var(--oneoff)'},card:{lab:'Card',col:'var(--card)'}};
+const META={affirm:{lab:'Installment',col:'var(--affirm)'},payin4:{lab:'Pay in 4',col:'var(--pay4)'},ccplans:{lab:'CC plan',col:'var(--ccplan)'},recurring:{lab:'Recurring',col:'var(--recur)'},oneoff:{lab:'One-time',col:'var(--oneoff)'},card:{lab:'Card',col:'var(--card)'},cardpay:{lab:'Card payment',col:'var(--ccplan)'}};
 function ord(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
-let view='forecast', half=1;
+let view='home';
+const VIEWS=['home','calendar','bills','cards','settings'];
 
 const SEED={
   paycheck:2769.23, payAnchor:'2026-09-04', payEvery:14,
@@ -906,13 +1022,27 @@ function paydaysIn(vi){
   for(let d=1;d<=last;d++)if(isPayday(y,m,d))out.push(d);
   return out;
 }
-// Monthly take-home is derived: paycheck x however many paydays land in the month,
-// so 3-paycheck months read higher. A manual month override still wins.
+// Monthly take-home: a month you've entered is used as-is. Other months use the per-check
+// amount from your latest earlier entry (so real pay carries forward), falling back to the
+// paycheck amount, times the paydays that land in that month.
 function incomeFor(vi){
-  const key=ymKey(vi);
-  const ov=S.incomeMonths&&S.incomeMonths[key];
-  return ov!=null?Number(ov):(Number(S.paycheck)||0)*paydaysIn(vi).length;
+  const ov=S.incomeMonths&&S.incomeMonths[ymKey(vi)];
+  if(ov!=null)return Number(ov);
+  return carriedPerCheck(vi)*paydaysIn(vi).length;
 }
+function carriedPerCheck(vi){
+  const keys=Object.keys(S.incomeMonths||{}).filter(k=>/^\d{4}-\d{2}$/.test(k)&&monthStartIdx(k)<vi).sort();
+  for(let i=keys.length-1;i>=0;i--){const k=keys[i],n=paydaysIn(monthStartIdx(k)).length;if(n)return Number(S.incomeMonths[k])/n;}
+  return Number(S.paycheck)||0;
+}
+// What one paycheck brings in that month.
+function paycheckFor(vi){const n=paydaysIn(vi).length;return n?incomeFor(vi)/n:carriedPerCheck(vi);}
+// Local calendar dates (not UTC, which flips to tomorrow in the evening).
+function todayISO(){const t=new Date();return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+function isoDayNum(iso){const p=String(iso).split('-').map(Number);return dayNum(p[0],(p[1]||1)-1,p[2]||1);}
+function dayNumToDate(n){const t=new Date(n*DAYMS);return {y:t.getUTCFullYear(),m:t.getUTCMonth(),d:t.getUTCDate()};}
+function todayNum(){return isoDayNum(todayISO());}
+function fmtDay(n){const t=dayNumToDate(n);return MON[t.m]+' '+t.d;}
 
 const MONA=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
 function buildISO(mo,day,yr,refVi){
@@ -963,7 +1093,7 @@ function dateVal(id,refVi){
 }
 
 function normalize(s){
-  s=s||{};
+  if(!s||typeof s!=='object'||Array.isArray(s))s={};
   s.income=Number(s.income)||0;
   // Older saves stored a flat monthly take-home. Convert it once to a biweekly
   // paycheck (26 checks a year); s.income is kept but no longer read.
@@ -974,11 +1104,19 @@ function normalize(s){
   if(!s.incomeMonths||typeof s.incomeMonths!=='object')s.incomeMonths={};
   s.cardPayment=Number(s.cardPayment)||0;
   if(!s.cardPayMonths||typeof s.cardPayMonths!=='object')s.cardPayMonths={};
-  SECTKEYS.forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];s[k].forEach(it=>{if(!it.id)it.id=uid();if(it.on===undefined)it.on=true;});});
-  s.recurring.forEach(it=>{if(it.variable===undefined)it.variable=false;if(!it.months||typeof it.months!=='object')it.months={};});
+  const safeId=v=>/^[A-Za-z0-9_-]{1,40}$/.test(String(v==null?'':v));
+  SECTKEYS.forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];s[k]=s[k].filter(it=>it&&typeof it==='object');s[k].forEach(it=>{
+    if(!safeId(it.id))it.id=uid();if(it.on===undefined)it.on=true;
+    it.name=String(it.name==null?'':it.name);
+    if(it.date!=null&&typeof it.date!=='string')it.date=String(it.date);
+    if(it.start!=null&&typeof it.start!=='string')it.start=String(it.start);
+  });});
+  s.recurring.forEach(it=>{if(it.variable===undefined)it.variable=false;if(!it.months||typeof it.months!=='object')it.months={};if(!it.monthAdj||typeof it.monthAdj!=='object')it.monthAdj={};if(it.paidEarly===undefined)it.paidEarly=/^rent$/i.test(String(it.name||'').trim());});
   (s.payin4||[]).forEach(it=>{it.count=Number(it.count)||4;it.every=Number(it.every)||7;});
   if(!Array.isArray(s.ccBalances))s.ccBalances=[];
-  s.ccBalances.forEach(c=>{if(!c.id)c.id=uid();c.balance=Number(c.balance)||0;c.apr=Number(c.apr)||0;c.payment=Number(c.payment)||0;if(!c.name)c.name='Card';if(!c.payMonths||typeof c.payMonths!=='object')c.payMonths={};
+  s.ccBalances=s.ccBalances.filter(c=>c&&typeof c==='object');
+  s.ccBalances.forEach(c=>{if(!safeId(c.id)){if(s.chargeCardId!=null&&String(s.chargeCardId)===String(c.id))s.chargeCardId=null;c.id=uid();}c.name=String(c.name==null?'':c.name);});
+  s.ccBalances.forEach(c=>{if(!c.id)c.id=uid();c.balance=Number(c.balance)||0;c.apr=Number(c.apr)||0;c.payment=Number(c.payment)||0;if(!c.name)c.name='Card';{const dd=Number(c.dueDay);c.dueDay=(dd>=1&&dd<=31)?dd:null;}if(!c.payMonths||typeof c.payMonths!=='object')c.payMonths={};
     // Balances are now anchored to the month they were read in. An older save held a
     // single flat balance, which implicitly meant "as of today" - anchor it there.
     // Only seeds when the map is absent, so deliberately clearing every anchor sticks.
@@ -993,6 +1131,23 @@ function normalize(s){
     s.chargeCardId=String(s.chargeCardId);
     if(s.chargeCardId&&!s.ccBalances.some(c=>c.id===s.chargeCardId))s.chargeCardId='';
   }
+  s.recurring.forEach(it=>{
+    if(!it.amountFrom||typeof it.amountFrom!=='object')it.amountFrom={};
+    if(!it.spent||typeof it.spent!=='object')it.spent={};
+    if(it.end!=null&&!/^\d{4}-\d{2}$/.test(String(it.end)))delete it.end;
+  });
+  if(!s.paid||typeof s.paid!=='object')s.paid={};
+  if(!s.checking||typeof s.checking!=='object')s.checking={};
+  {const a=s.checking.amount;s.checking.amount=(a===''||a==null||!isFinite(Number(a)))?null:Number(a);}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(s.checking.date||'')))s.checking.date='';
+  if(!s.debtPlan||typeof s.debtPlan!=='object')s.debtPlan={};
+  s.debtPlan.target=/^\d{4}-\d{2}$/.test(String(s.debtPlan.target||''))?s.debtPlan.target:'';
+  s.debtPlan.spendLimit=Math.max(0,Number(s.debtPlan.spendLimit)||0);
+  s.debtPlan.extra=Math.max(0,Number(s.debtPlan.extra)||0);
+  if(s.payoffStrategy!=='snowball')s.payoffStrategy='avalanche';
+  if(!s.merchantMap||typeof s.merchantMap!=='object')s.merchantMap={};
+  if(!s.imported||typeof s.imported!=='object')s.imported={};
+  if(s.lastExport!=null&&!/^\d{4}-\d{2}-\d{2}$/.test(String(s.lastExport)))delete s.lastExport;
   return s;
 }
 function migrateV2(s){ // v2 had no ccplans and possibly no variable fields
@@ -1017,8 +1172,17 @@ const store={
   }
 };
 
+let LOAD_NOTE='';
 async function load(){
-  try{const r=await store.get(KEY); if(r&&r.value){S=JSON.parse(r.value);}}catch(e){S=null;}
+  let raw=null;S=null;
+  try{const r=await store.get(KEY); if(r&&r.value){raw=r.value;S=JSON.parse(raw);}}catch(e){S=null;}
+  if(raw&&(!S||typeof S!=='object')){
+    // Saved data exists but can't be read. Keep an untouched copy before anything is written.
+    S=null;
+    const ck=KEY+':unreadable:'+Date.now();
+    try{await store.set(ck,raw);}catch(e){}
+    LOAD_NOTE=`Your saved data couldn't be read, so the app started with sample data. The unreadable copy was kept in this browser (storage key <code>${esc(ck)}</code>). Import your latest backup from Settings.`;
+  }
   if(!S){
     let old=null;
     try{const r2=await store.get(OLDKEY); if(r2&&r2.value) old=JSON.parse(r2.value);}catch(e){}
@@ -1026,15 +1190,25 @@ async function load(){
     else { S=JSON.parse(JSON.stringify(SEED)); }
   }
   S=normalize(S);
-  await save();
+  payoffStrategy=S.payoffStrategy;
+  await save(true);
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
   selIdx=curIdx();
-  document.getElementById('paycheck').value=S.paycheck||'';
-  render();
+  try{const v=localStorage.getItem('cashflow:view');if(VIEWS.includes(v))view=v;}catch(e){}
+  setView(view);
+  if(LOAD_NOTE){showBanner(LOAD_NOTE,'warn');LOAD_NOTE='';}
 }
 function cardPayFor(c,vi){
   const key=ymKey(vi);
   const ov=c.payMonths&&c.payMonths[key];
   return ov!=null?Number(ov):(Number(c.payment)||0);
+}
+// Cash that actually goes to this card in month vi. A payment typed for that month is
+// taken as given; the normal monthly payment stops once there's nothing left to pay.
+function cardCashPay(c,vi){
+  const ov=c.payMonths&&c.payMonths[ymKey(vi)];
+  if(ov!=null)return Number(ov);
+  return Math.min(Number(c.payment)||0,balanceFor(c,vi));
 }
 // Card balance by month. A balance you type is an *actual* reading anchored to the month
 // you typed it in (same idiom as payMonths). Any later month is projected forward from the
@@ -1051,7 +1225,8 @@ function cardChargesFor(c,vi){
   // Spending through the current month has already hit the balance you're reading off
   // your statement, so only months still ahead add new charges on top.
   if(!S.chargeCardId||c.id!==S.chargeCardId||vi<=curIdx())return 0;
-  return monthlyChargesFor(vi);
+  // With a spending limit set, plan for at least that much new spending each month.
+  return Math.max(monthlyChargesFor(vi),Number(S.debtPlan&&S.debtPlan.spendLimit)||0);
 }
 // Walks the roll-forward and keeps the running parts, so the projection can show its
 // own arithmetic. balanceFor is just the resulting balance.
@@ -1074,9 +1249,8 @@ function balanceBreakdown(c,vi){
     // A month's payment comes off that month's balance, then interest accrues on what's
     // left and any new spending lands on top. That carry-over is the next month's balance.
     const pay=cardPayFor(c,v), after=Math.max(0,bal-pay), int=after*rate, chg=cardChargesFor(c,v);
-    out.interest+=int; out.charges+=chg; out.payments+=pay; out.months++;
+    out.interest+=int; out.charges+=chg; out.payments+=Math.min(pay,bal); out.months++;
     bal=after+int+chg;
-    if(bal<=0){bal=0;break;}
   }
   out.bal=bal;
   return out;
@@ -1084,9 +1258,20 @@ function balanceBreakdown(c,vi){
 function balanceFor(c,vi){return balanceBreakdown(c,vi).bal;}
 // What you still owe once this month's payment goes through - and what next month builds on.
 function balanceAfterPay(c,vi){return Math.max(0,balanceFor(c,vi)-cardPayFor(c,vi));}
-function cardPaymentTotal(vi){return (S.ccBalances||[]).reduce((s,c)=>s+cardPayFor(c,vi),0);}
+function cardPaymentTotal(vi){return (S.ccBalances||[]).reduce((s,c)=>s+cardCashPay(c,vi),0);}
 function updateCardPayHeader(){const el=document.getElementById('cardpayTot');if(el)el.textContent=fmt0(cardPaymentTotal(selIdx));}
-async function save(){try{await store.set(KEY,JSON.stringify(S));flash();}catch(e){console.error(e);}}
+async function save(silent){
+  try{
+    const r=await store.set(KEY,JSON.stringify(S));
+    if(r==null){showBanner("This browser isn't keeping your data (private browsing or site data turned off). Export a backup from Settings before you close the page.",'warn');return;}
+    if(!silent)flash();
+  }catch(e){console.error(e);showBanner('Your last change could not be saved ('+esc(e.message||String(e))+'). Export a backup from Settings so nothing is lost.','warn');}
+}
+function showBanner(html,kind){const b=document.getElementById('banner');if(!b)return;b.innerHTML='<span>'+html+'</span><button class="icon-btn" onclick="hideBanner()" aria-label="Dismiss">✕</button>';b.className='banner'+(kind?' '+kind:'');b.hidden=false;}
+window.hideBanner=()=>{const b=document.getElementById('banner');if(b)b.hidden=true;};
+function showModal(html){closeModal();const bg=document.createElement('div');bg.className='modal-bg';bg.id='appModal';bg.innerHTML='<div class="modal">'+html+'</div>';bg.addEventListener('click',e=>{if(e.target===bg)closeModal();});document.body.appendChild(bg);}
+function closeModal(){const m=document.getElementById('appModal');if(m)m.remove();}
+window.closeModal=closeModal;
 function flash(){const f=document.getElementById('savedFlag');f.classList.add('show');setTimeout(()=>f.classList.remove('show'),1100);}
 
 function monthStartIdx(s){if(!s)return null;const p=String(s).split('-').map(Number);return mi(p[0],(p[1]||1)-1);}
@@ -1099,6 +1284,12 @@ function payin4Dates(it){
   for(let k=0;k<cnt;k++){const d=new Date(start);d.setDate(start.getDate()+k*every);out.push(d);}
   return out;
 }
+// Bills paid ahead (rent) are covered by the previous month's last paycheck, so month
+// vi carries the bill that falls due in month vi+1.
+function billVi(it,vi){return it.paidEarly?vi+1:vi;}
+// A recurring amount that changed: the latest change at or before month vi applies, so
+// raising rent next year doesn't rewrite what you paid before.
+function amountAt(it,vi){let a=Number(it.amount)||0;const ch=it.amountFrom||{};Object.keys(ch).filter(k=>/^\d{4}-\d{2}$/.test(k)&&monthStartIdx(k)<=vi).sort().forEach(k=>{a=Number(ch[k])||0;});return a;}
 function evalItem(it,sect,vi){
   if(it.on===false)return {amt:0,active:false,status:'off'};
   const mode=SECT[sect].mode;
@@ -1115,12 +1306,22 @@ function evalItem(it,sect,vi){
   }
   if(mode==='recurring'){
     const st=monthStartIdx(it.start);
-    if(st!=null&&vi<st)return {amt:0,active:false,status:'pending'};
+    const bv=billVi(it,vi);
+    if(st!=null&&bv<st)return {amt:0,active:false,status:'pending'};
+    if(it.monthAdj&&it.monthAdj[ymKey(bv)]&&it.monthAdj[ymKey(bv)].skip)return {amt:0,active:false,status:'skipped'};
+    const en=monthStartIdx(it.end);
+    if(en!=null&&bv>en)return {amt:0,active:false,status:'done'};
+    const base=amountAt(it,bv);
     if(it.variable){
-      const key=ymKey(vi), has=it.months&&it.months[key]!=null;
-      return {amt:has?Number(it.months[key]):(Number(it.amount)||0),active:true,status:'on',est:!has};
+      const key=ymKey(bv), has=it.months&&it.months[key]!=null;
+      if(has)return {amt:Number(it.months[key]),active:true,status:'on',est:false};
+      // Logged spending: the estimate is still counted until the month is over (you'll
+      // likely spend at least that), then what you actually logged is the figure.
+      const spent=Number(it.spent&&it.spent[key])||0;
+      if(spent>0){const past=bv<curIdx();return {amt:past?spent:Math.max(base,spent),active:true,status:'on',est:!past&&spent<base,spent};}
+      return {amt:base,active:true,status:'on',est:true,spent:0};
     }
-    return {amt:Number(it.amount)||0,active:true,status:'on'};
+    return {amt:base,active:true,status:'on'};
   }
   if(mode==='oncecash'){
     const st=parseStart(it.date);
@@ -1145,41 +1346,62 @@ function evalItem(it,sect,vi){
 function sectionSum(sect,vi){return S[sect].reduce((s,it)=>s+evalItem(it,sect,vi).amt,0);}
 function monthTotal(vi){return SECTKEYS.reduce((s,k)=>s+sectionSum(k,vi),0);}
 
+// Cash that leaves checking in a month.
+function cashOut(vi){return sectionSum('recurring',vi)+sectionSum('affirm',vi)+sectionSum('payin4',vi)+sectionSum('oneoff',vi)+cardPaymentTotal(vi);}
 function render(){
   renderHeader();
-  updateCardPayHeader();
   renderIncomeBox();
-  if(view==='forecast'){renderCards();renderProjection();renderDonut();renderSections();renderCardBalances();}
-  else{renderCalendar();}
+  if(view==='home'){renderHome();renderCards();renderProjection();renderDonut();}
+  else if(view==='bills')renderSections();
+  else if(view==='cards'){renderCardBalances();}
+  else if(view==='calendar')renderCalendar();
+  else renderSettings();
 }
 function renderIncomeBox(){
-  const key=ymKey(selIdx), m=MON[idxToYM(selIdx).m];
+  const key=ymKey(selIdx),{y,m}=idxToYM(selIdx);
   const has=S.incomeMonths&&S.incomeMonths[key]!=null;
-  document.getElementById('incOvLbl').textContent=m+' override';
+  document.getElementById('incOvLbl').textContent=MONL[m]+' '+y+' take-home';
   const ovEl=document.getElementById('incOverride');
   if(document.activeElement!==ovEl)ovEl.value=has?S.incomeMonths[key]:'';
-  const n=paydaysIn(selIdx).length, base=(Number(S.paycheck)||0)*n;
-  ovEl.placeholder=base?String(Math.round(base)):'default';
+  const n=paydaysIn(selIdx).length, per=carriedPerCheck(selIdx), base=per*n;
+  ovEl.placeholder=base?String(Math.round(base)):'0';
   const payEl=document.getElementById('paycheck');
-  if(payEl&&document.activeElement!==payEl)payEl.value=S.paycheck||'';
+  if(document.activeElement!==payEl)payEl.value=S.paycheck||'';
   const anchorEl=document.getElementById('payAnchor');
-  if(anchorEl&&document.activeElement!==anchorEl)anchorEl.value=S.payAnchor||DEFAULT_PAY_ANCHOR;
-  const monEl=document.getElementById('incMonthly');
-  if(monEl)monEl.textContent=base?`${m}: ${n} checks · ${fmt0(incomeFor(selIdx))}`:'';
+  if(document.activeElement!==anchorEl)anchorEl.value=S.payAnchor||DEFAULT_PAY_ANCHOR;
+  document.getElementById('incMonthly').textContent=`${MONL[m]}: ${n} payday${n===1?'':'s'} · ${fmt0(incomeFor(selIdx))}${has?' (entered)':' (estimated)'}. Use the month arrows at the top to enter other months.`;
+  document.getElementById('incCarry').textContent=Object.keys(S.incomeMonths||{}).length
+    ?`Months you haven't entered use ${fmt(per)} per paycheck, carried from your latest entered month.`
+    :'Months use your paycheck amount times the paydays in that month.';
 }
-
 window.setView=v=>{
+  if(!VIEWS.includes(v))v='home';
   view=v;
-  document.getElementById('vwForecast').classList.toggle('active',v==='forecast');
-  document.getElementById('vwCalendar').classList.toggle('active',v==='calendar');
-  document.getElementById('forecastView').classList.toggle('active',v==='forecast');
-  document.getElementById('calendarView').classList.toggle('active',v==='calendar');
+  document.querySelectorAll('#viewsw button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  VIEWS.forEach(x=>document.getElementById(x+'View').classList.toggle('active',x===v));
+  try{localStorage.setItem('cashflow:view',v);}catch(e){}
   render();
 };
-window.setHalf=h=>{half=h;document.getElementById('h1btn').classList.toggle('active',h===1);document.getElementById('h2btn').classList.toggle('active',h===2);renderCalendar();};
+function renderSettings(){
+  const ci=document.getElementById('chkAmt'),cd=document.getElementById('chkDate');
+  if(document.activeElement!==ci)ci.value=S.checking.amount==null?'':S.checking.amount;
+  if(document.activeElement!==cd)cd.value=S.checking.date||'';
+  const age=backupAge();
+  document.getElementById('backupInfo').textContent=age==null?'No backup exported yet.':`Last backup ${age<=0?'today':age+' day'+(age===1?'':'s')+' ago'} (${S.lastExport}).`;
+  Promise.resolve(store.get(PREV_KEY)).then(r=>{
+    let p=null;try{p=r&&r.value?JSON.parse(r.value):null;}catch(e){}
+    const b=document.getElementById('restoreBtn');b.hidden=!(p&&p.data);
+    if(p&&p.data)b.textContent='Undo last import (restore data from '+p.at+')';
+  }).catch(()=>{});
+}
+function backupAge(){return S.lastExport?todayNum()-isoDayNum(S.lastExport):null;}
 
 function dayOf(it,sect,vi){
-  if(sect==='recurring')return (it.day==null?null:Number(it.day));
+  if(sect==='recurring'){
+    const adj=it.monthAdj&&it.monthAdj[ymKey(billVi(it,vi!=null?vi:selIdx))];
+    if(adj&&adj.day)return Number(adj.day);
+    return it.day==null?null:Number(it.day);
+  }
   if(sect==='payin4'){
     const {y,m}=idxToYM(vi!=null?vi:selIdx);
     const days=payin4Dates(it).filter(d=>d.getFullYear()===y&&d.getMonth()===m).map(d=>d.getDate());
@@ -1190,29 +1412,42 @@ function dayOf(it,sect,vi){
 }
 function calItems(vi){
   if(vi==null)vi=selIdx;
-  const out=[];
-  const {y,m}=idxToYM(vi);
-  SECTKEYS.forEach(sect=>{(S[sect]||[]).forEach(it=>{
+  const out=[],{y,m}=idxToYM(vi),last=daysInMonth(vi),ym=ymKey(vi);
+  // A due day past the end of a short month lands on that month's last day.
+  const clampDay=d=>d==null?null:Math.min(d,last);
+  // Calendar and paycheck coverage follow cash: card spending stays out, and what
+  // appears instead is the payment that actually leaves checking.
+  SECTKEYS.filter(sect=>sect!=='ccplans'&&sect!=='card').forEach(sect=>{(S[sect]||[]).forEach(it=>{
     if(it.on===false)return;
     if(SECT[sect].mode==='payin4'){
-      payin4Dates(it).forEach(d=>{if(d.getFullYear()===y&&d.getMonth()===m)out.push({sect,name:it.name,amount:Number(it.amount)||0,day:d.getDate(),variable:false,est:false});});
+      payin4Dates(it).forEach(dt=>{if(dt.getFullYear()===y&&dt.getMonth()===m)out.push({sect,id:it.id,key:sect+':'+it.id+':'+ym+':'+dt.getDate(),name:it.name,amount:Number(it.amount)||0,day:dt.getDate(),variable:false,est:false});});
       return;
     }
     const ev=evalItem(it,sect,vi);
     if(ev.status!=='on'||ev.amt<=0)return;
-    out.push({sect,name:it.name,amount:ev.amt,day:dayOf(it,sect,vi),variable:!!it.variable,est:!!ev.est});
+    const base={sect,id:it.id,key:sect+':'+it.id+':'+ym,amount:ev.amt,variable:!!it.variable,est:!!ev.est,spent:ev.spent||0};
+    if(sect==='recurring'&&it.paidEarly){
+      const pays=paydaysIn(vi),due=dayOf(it,sect,vi),nm=MON[idxToYM(vi+1).m],dd=due==null?null:Math.min(due,daysInMonth(vi+1));
+      out.push(Object.assign(base,{name:it.name+(dd?` (${nm} ${dd})`:` (${nm})`),day:pays.length?pays[pays.length-1]:clampDay(due)}));
+      return;
+    }
+    out.push(Object.assign(base,{name:it.name,day:clampDay(dayOf(it,sect,vi))}));
   });});
+  (S.ccBalances||[]).forEach(c=>{
+    const amt=cardCashPay(c,vi);
+    if(amt>0)out.push({sect:'cardpay',id:c.id,key:'cardpay:'+c.id+':'+ym,name:c.name+' payment',amount:amt,day:clampDay(c.dueDay),variable:false,est:false});
+  });
   return out;
 }
 // Each paycheck covers the bills due from that payday until the next one. That
 // window runs 14 days, so the last check of a month covers early next-month bills
 // (e.g. the Sep 18 check pays Oct 1 rent) — hence pooling two months of items.
 function paycheckPeriods(vi){
-  const {y,m}=idxToYM(vi),e=payEvery(),amt=Number(S.paycheck)||0;
+  const {y,m}=idxToYM(vi),e=payEvery(),amt=paycheckFor(vi);
   const pool=[];
   [vi,vi+1].forEach(v=>{
     const ym=idxToYM(v);
-    calItems(v).forEach(i=>{if(i.day!=null)pool.push({sect:i.sect,name:i.name,amount:i.amount,est:i.est,day:i.day,vi:v,n:dayNum(ym.y,ym.m,i.day)});});
+    calItems(v).forEach(i=>{if(i.day!=null)pool.push({sect:i.sect,key:i.key,name:i.name,amount:i.amount,est:i.est,day:i.day,vi:v,n:dayNum(ym.y,ym.m,i.day)});});
   });
   return paydaysIn(vi).map(d=>{
     const start=dayNum(y,m,d),end=start+e;
@@ -1221,113 +1456,233 @@ function paycheckPeriods(vi){
     return {day:d,vi,start,end,items,total,left:amt-total};
   });
 }
-function inHalf(day){return half===1?(day>=1&&day<=15):(day>=16);}
+// ---------- Running checking balance ----------
+// Starts from the balance you entered and walks forward a day at a time: paychecks in,
+// dated bills out (unless marked paid), everyday spending spread across the month.
+// Things dated on the balance date itself are treated as already posted.
+function runningBalance(untilN){
+  if(!S.checking||S.checking.amount==null||!S.checking.date)return null;
+  const start=isoDayNum(S.checking.date), end=Math.max(untilN||0,start+1);
+  const ev={},add=(n,o)=>{if(n>start&&n<=end)(ev[n]=ev[n]||[]).push(o);};
+  const a=dayNumToDate(start),b=dayNumToDate(end);
+  for(let vi=mi(a.y,a.m);vi<=mi(b.y,b.m);vi++){
+    const {y,m}=idxToYM(vi),last=daysInMonth(vi),first=dayNum(y,m,1),lastN=dayNum(y,m,last);
+    paydaysIn(vi).forEach(dd=>add(dayNum(y,m,dd),{kind:'pay',amount:paycheckFor(vi)}));
+    let anytime=0;
+    const from=Math.max(first,start+1),daysLeft=lastN-from+1;
+    calItems(vi).forEach(i=>{
+      if(i.day==null){
+        if(daysLeft<=0)return;
+        // what's still to come this month: what's left after logged spending, or a
+        // pro-rated share of the estimate if nothing's been logged
+        anytime+=i.spent>0?Math.max(0,i.amount-i.spent):i.amount*daysLeft/last;
+        return;
+      }
+      if(S.paid[i.key])return;
+      add(dayNum(y,m,i.day),Object.assign({kind:'bill'},i));
+    });
+    if(anytime>0&&daysLeft>0){const per=anytime/daysLeft;for(let n=from;n<=lastN;n++)add(n,{kind:'spend',amount:per});}
+  }
+  let bal=Number(S.checking.amount);const daily=[{n:start,bal}];
+  for(let n=start+1;n<=end;n++){(ev[n]||[]).forEach(e=>{bal+=e.kind==='pay'?e.amount:-e.amount;});daily.push({n,bal});}
+  return {start,end,daily,at(n){if(n<=start)return daily[0].bal;return (daily[n-start]||daily[daily.length-1]).bal;}};
+}
+function nextPayday(afterN){for(let n=afterN+1;n<=afterN+60;n++){const t=dayNumToDate(n);if(isPayday(t.y,t.m,t.d))return n;}return null;}
+window.togglePaid=key=>{if(S.paid[key])delete S.paid[key];else S.paid[key]=todayISO();save();render();};
+window.setChecking=()=>{const el=document.getElementById('homeBal');const v=el?el.value.trim():'';if(v===''||!isFinite(Number(v))){if(el)el.classList.add('invalid');return;}S.checking={amount:Number(v),date:todayISO()};save();render();};
+function upcomingBills(fromN,toN){
+  const out=[],a=dayNumToDate(fromN),b=dayNumToDate(toN);
+  for(let vi=mi(a.y,a.m);vi<=mi(b.y,b.m);vi++){const {y,m}=idxToYM(vi);calItems(vi).forEach(i=>{if(i.day==null)return;const n=dayNum(y,m,i.day);if(n>=fromN&&n<=toN)out.push(Object.assign({n},i));});}
+  return out.sort((x,z)=>x.n-z.n||z.amount-x.amount);
+}
+function billRow(i,dateTxt){
+  const paid=!!S.paid[i.key];
+  return `<div class="dit${paid?' paid':''}"><span class="nm"><button class="chk${paid?' on':''}" onclick="togglePaid('${i.key}')" aria-label="${paid?'Mark as not paid':'Mark as paid'}" title="${paid?'Paid — tap to undo':'Mark as paid'}">✓</button>${dateTxt?`<span class="pcdt">${dateTxt}</span>`:''}<span class="pd" style="background:${META[i.sect].col}"></span><span class="nmx">${esc(i.name)}${i.est?'<span class="est">est</span>':''}</span></span><span class="vl">${fmt(i.amount)}</span></div>`;
+}
+function renderHome(){
+  const el=document.getElementById('home');
+  const tNow=todayNum(),cur=curIdx(),np=nextPayday(tNow);
+  const rb=runningBalance(tNow+50);
+  let main;
+  if(rb){
+    const from=Math.max(tNow,rb.start),win=rb.daily.filter(x=>x.n>=from&&x.n<=tNow+45);
+    const low=win.reduce((a,x)=>x.bal<a.bal?x:a,win[0]||rb.daily[0]);
+    const now=rb.at(tNow),before=np?rb.at(np-1):null;
+    const stale=S.checking.date!==todayISO();
+    main=`<div class="hero-lab">${low.bal<0?'Heads up':'Safe to spend now'}</div>
+      <div class="hero-num${low.bal<0?' neg':''}">${low.bal<0?'Short '+fmt0(-low.bal):fmt0(low.bal)}</div>
+      <div class="hero-sub">${low.bal<0?`Checking is projected to drop below zero on <strong>${fmtDay(low.n)}</strong>.`:`Lowest point ahead: <strong>${fmt0(low.bal)}</strong> on ${fmtDay(low.n)}. Spend more than this and that day goes negative.`}</div>
+      <div class="hero-meta">Checking ${stale?'projected ':''}${fmt0(now)} today${stale?` · from your ${fmtDay(rb.start)} balance <button class="lnk" onclick="setView('settings')">update</button>`:''}${np?` · next payday ${fmtDay(np)}, ${fmt0(before)} the day before`:''}</div>`;
+  }else{
+    const left=incomeFor(cur)-cashOut(cur);
+    main=`<div class="hero-lab">Left in ${MONL[idxToYM(cur).m]} after everything clears</div>
+      <div class="hero-num${left<0?' neg':''}">${fmt0(left)}</div>
+      <div class="hero-sub">Add today's checking balance to see what's safe to spend and your lowest point before payday.</div>
+      <div class="formrow" style="margin-top:8px"><label>Checking balance today $<span style="display:flex;gap:8px"><input id="homeBal" class="mono" type="number" inputmode="decimal" placeholder="0.00"><button class="btn" onclick="setChecking()">Save</button></span></label></div>`;
+  }
+  const notes=[];
+  const plan=planStatus();
+  if(plan)notes.push(plan.html);
+  const undated=(S.recurring||[]).filter(it=>it.variable&&it.day==null);
+  const onU=undated.filter(it=>it.on!==false&&evalItem(it,'recurring',cur).amt>0),offU=undated.filter(it=>it.on===false);
+  notes.push(`Everyday spending counted: ${onU.length?onU.map(it=>esc(it.name)+' '+fmt0(evalItem(it,'recurring',cur).amt)).join(', '):'none'}.${offU.length?` <span class="warnt">Paused, so counted as $0: ${offU.map(it=>esc(it.name)).join(', ')}.</span>`:''}`);
+  const age=backupAge();
+  if(age==null||age>14)notes.push(`<span class="warnt">${age==null?'No backup yet.':'Last backup '+age+' days ago.'}</span> <button class="lnk" onclick="doExport()">Export now</button>`);
+  const up=upcomingBills(tNow,tNow+14);
+  const side=up.length?up.slice(0,7).map(i=>billRow(i,i.n===tNow?'Today':fmtDay(i.n))).join('')+(up.length>7?`<div class="note-block">+ ${up.length-7} more in the Calendar</div>`:''):'<div class="empty">Nothing due in the next 14 days.</div>';
+  el.innerHTML=`<div class="hero-grid"><div class="hero-main">${main}<div class="hero-notes">${notes.map(n=>`<div>${n}</div>`).join('')}</div></div>
+    <div class="hero-side"><div class="hero-lab">Due in the next 14 days</div>${side}</div></div>`;
+}
 
 function renderCoverage(){
-  const periods=paycheckPeriods(selIdx),amt=Number(S.paycheck)||0;
+  const periods=paycheckPeriods(selIdx);
   const m=MONL[idxToYM(selIdx).m];
   document.getElementById('pcTitle').textContent='Paycheck coverage · '+m;
   const sub=document.getElementById('pcSub');
-  if(!amt){
-    sub.textContent='Set your paycheck amount up top to see what each one covers.';
+  if(!periods.length||!paycheckFor(selIdx)){
+    sub.textContent='Set your paycheck amount and a recent payday in Settings to see what each check covers.';
     document.getElementById('pcList').innerHTML='';
     return;
   }
-  sub.textContent=`Each paycheck covers the bills due until the next one — so the last check of the month picks up early next-month bills like rent. ${periods.length} paycheck${periods.length===1?'':'s'} in ${m}.`;
+  const noDue=(S.ccBalances||[]).filter(c=>c.dueDay==null&&cardCashPay(c,selIdx)>0).length;
+  const last=periods[periods.length-1];
+  const rb=runningBalance(last.end);
+  sub.innerHTML=`Each paycheck covers the bills due until the next one, so the last check of the month picks up early next-month bills.${rb?' Checking balances include everyday spending and what carries over from earlier checks.':' Add your checking balance in Settings to see what carries over between checks.'}`+(noDue?` <span class="warnt">${noDue} card payment${noDue===1?' has':'s have'} no due day yet, so ${noDue===1?"it isn't":"they aren't"} counted here.</span>`:'');
   const html=periods.map(p=>{
-    // p.end is exclusive (it's the next payday), so the last day this check covers is end-1
-    const sd=idxToYM(p.vi),lastDay=new Date((p.end-1)*DAYMS);
-    const untilTxt=MON[lastDay.getUTCMonth()]+' '+lastDay.getUTCDate();
+    const sd=idxToYM(p.vi),lastDay=p.end-1,amt=paycheckFor(p.vi);
     const rows=p.items.length?p.items.map(i=>{
-      const iy=idxToYM(i.vi),crosses=i.vi!==selIdx;
-      return `<div class="pcrow"><span class="pd" style="background:${META[i.sect].col}"></span><span class="pcdt">${MON[iy.m]} ${i.day}</span><span class="nm">${esc(i.name)}${i.est?'<span class="est">est</span>':''}${crosses?`<span class="pcnx">${MON[iy.m]}</span>`:''}</span><span class="vl">${fmt(i.amount)}</span></div>`;
+      const iy=idxToYM(i.vi);
+      return billRow(i,MON[iy.m]+' '+i.day);
     }).join(''):'<div class="pcempty">Nothing dated in this stretch.</div>';
+    const carry=rb&&p.start>rb.start?rb.at(p.start-1):null, endBal=rb&&lastDay>rb.start?rb.at(lastDay):null;
     return `<div class="pcp">
-      <div class="pch"><span class="ptag">payday ${MON[sd.m]} ${p.day}</span><span class="pcw">covers through ${untilTxt}</span><span class="pcin">+${fmt(amt)}</span></div>
+      <div class="pch"><span class="ptag">payday ${MON[sd.m]} ${p.day}</span><span class="pcw">covers through ${fmtDay(lastDay)}</span><span class="pcin">+${fmt(amt)}</span></div>
       ${rows}
-      <div class="pcft"><span>${p.items.length} bill${p.items.length===1?'':'s'} · ${fmt(p.total)}</span><span class="${p.left<0?'neg':''}">${p.left<0?'short '+fmt0(-p.left):'left '+fmt0(p.left)}</span></div>
+      <div class="pcft"><span>${p.items.length} bill${p.items.length===1?'':'s'} · ${fmt(p.total)}</span><span class="${p.left<0?'neg':''}">${p.left<0?'this check is short '+fmt0(-p.left):'left from this check '+fmt0(p.left)}</span></div>
+      ${carry!=null&&endBal!=null?`<div class="pcbal"><span>Checking ${fmt0(carry)} before payday</span><span class="${endBal<0?'neg':''}">${fmt0(endBal)} by ${fmtDay(lastDay)}</span></div>`:''}
     </div>`;
-  }).join('')||'<div class="empty">No paydays land in this month — check the payday anchor date up top.</div>';
+  }).join('');
   document.getElementById('pcList').innerHTML=html;
 }
 
 function renderCalendar(){
-  const m=MONL[idxToYM(selIdx).m];
-  document.getElementById('calMonthLbl').textContent='Showing '+m+' '+idxToYM(selIdx).y+' — switch months with the arrows above';
+  const {y,m}=idxToYM(selIdx),ml=MONL[m],isCur=selIdx===curIdx(),tday=isCur?dayNumToDate(todayNum()).d:null;
+  document.getElementById('calMonthLbl').textContent=`${ml} ${y} — switch months with the arrows at the top`;
   renderCoverage();
   const items=calItems();
+  const sum=a=>a.reduce((s,i)=>s+i.amount,0);
   const dated=items.filter(i=>i.day!=null), undated=items.filter(i=>i.day==null);
-  const halfItems=dated.filter(i=>inHalf(i.day));
-  const otherTotal=dated.filter(i=>!inHalf(i.day)).reduce((s,i)=>s+i.amount,0);
-  const halfTotal=halfItems.reduce((s,i)=>s+i.amount,0);
-  const undTotal=undated.reduce((s,i)=>s+i.amount,0);
-  const days=[...new Set(halfItems.map(i=>i.day))].sort((a,b)=>a-b);
-  const label=half===1?'1st – 15th':'16th – end';
-
+  const cardPays=items.filter(i=>i.sect==='cardpay'), pays=paydaysIn(selIdx);
   document.getElementById('calCards').innerHTML=[
-    `<div class="card accent"><div class="lab">${label} dated</div><div class="big">${fmt(halfTotal)}</div><div class="note">${halfItems.length} payments · ${days.length} days</div></div>`,
-    `<div class="card"><div class="lab">Other half</div><div class="big">${fmt(otherTotal)}</div><div class="note">${half===1?'16th – end':'1st – 15th'}</div></div>`,
-    `<div class="card"><div class="lab">Anytime</div><div class="big">${fmt(undTotal)}</div><div class="note">no fixed day</div></div>`,
-    `<div class="card"><div class="lab">${m} all dated</div><div class="big">${fmt(halfTotal+otherTotal)}</div><div class="note">+ ${fmt(undTotal)} anytime</div></div>`,
+    `<div class="card accent"><div class="lab">Bills with a date</div><div class="big">${fmt0(sum(dated))}</div><div class="note">${dated.length} payments</div></div>`,
+    `<div class="card"><div class="lab">Card payments</div><div class="big" style="color:var(--ccplan)">${fmt0(sum(cardPays))}</div><div class="note">${cardPays.length?cardPays.map(i=>esc(i.name.replace(/ payment$/,''))).join(', '):'none this month'}</div></div>`,
+    `<div class="card"><div class="lab">Anytime</div><div class="big">${fmt0(sum(undated.filter(i=>i.sect!=='cardpay')))}</div><div class="note">everyday spending</div></div>`,
+    `<div class="card left"><div class="lab">Paychecks</div><div class="big">${fmt0(incomeFor(selIdx))}</div><div class="note">${pays.map(dd=>MON[m]+' '+dd).join(' · ')||'no paydays'}</div></div>`,
   ].join('');
-
-  renderTimeline(halfItems);
-  document.getElementById('tlTitle').textContent='Outflow timeline · '+label;
-  document.getElementById('listTitle').textContent='Day by day · '+label;
-  document.getElementById('listSub').textContent=days.length?(fmt(halfTotal)+' across '+days.length+' days'):'No dated bills in this half.';
-
-  const start=half===1?1:16,end=half===1?15:31;
-  const payInHalf=paydaysIn(selIdx).filter(p=>p>=start&&p<=end);
-  const rowsByDay={};days.forEach(d=>{rowsByDay[d]=halfItems.filter(i=>i.day===d).sort((a,b)=>b.amount-a.amount);});
+  renderTimeline(dated,tday);
+  document.getElementById('tlTitle').textContent='Outflow timeline · '+ml;
+  document.getElementById('listTitle').textContent='Day by day · '+ml;
+  const days=[...new Set(dated.map(i=>i.day))];
+  document.getElementById('listSub').textContent=days.length?`${fmt(sum(dated))} across ${days.length} days · tap ✓ when something's paid`:'No dated bills this month.';
   let html='';
-  [...new Set([...days,...payInHalf])].sort((a,b)=>a-b).forEach(d=>{
-    const isPay=payInHalf.includes(d),its=rowsByDay[d]||[];
-    if(its.length){
-      const sub=its.reduce((s,i)=>s+i.amount,0);
-      html+=`<div class="day"><div class="daynum ${isPay?'pay':''}"><div class="n">${d}</div><div class="o">${ord(d).replace(d,'')}</div></div><div class="ditems">`+
-        its.map(i=>`<div class="dit"><span class="nm"><span class="pd" style="background:${META[i.sect].col}"></span>${esc(i.name)}${i.est?'<span class="est">est</span>':''}</span><span class="vl">${fmt(i.amount)}</span></div>`).join('')+
-        `</div><div class="daysub">${fmt(sub)}</div></div>`;
+  [...new Set([...days,...pays,...(tday?[tday]:[])])].sort((a,b)=>a-b).forEach(dd=>{
+    const isPay=pays.includes(dd),its=dated.filter(i=>i.day===dd).sort((a,b)=>b.amount-a.amount),isT=dd===tday;
+    if(its.length||isT){
+      html+=`<div class="day${isT?' today':''}"><div class="daynum ${isPay?'pay':''}"><div class="n">${dd}</div><div class="o">${isT?'today':ord(dd).replace(String(dd),'')}</div></div><div class="ditems">`+
+        (its.length?its.map(i=>billRow(i,'')).join(''):'<div class="pcempty">Nothing due today.</div>')+
+        `</div><div class="daysub">${its.length?fmt(sum(its)):''}</div></div>`;
     }
-    if(isPay){const amt=Number(S.paycheck)||0;html+=`<div class="payrow"><span class="ptag">payday ${MON[idxToYM(selIdx).m]} ${d}</span><span class="ptxt">paycheck in${amt?' ('+fmt(amt)+')':''}</span></div>`;}
+    if(isPay)html+=`<div class="payrow"><span class="ptag">payday ${MON[m]} ${dd}</span><span class="ptxt">paycheck in (${fmt(paycheckFor(selIdx))})</span></div>`;
   });
-  document.getElementById('days').innerHTML=html||'<div style="color:var(--faint);font-size:13px;padding:10px 4px">Nothing dated in this half for '+m+'.</div>';
-
+  document.getElementById('days').innerHTML=html||'<div class="empty">Nothing dated this month.</div>';
   document.getElementById('anytime').innerHTML=undated.length?undated.map(i=>
-    `<div class="chip"><span class="pd" style="background:${META[i.sect].col}"></span><span class="nm">${esc(i.name)}</span><span class="vl">${fmt(i.amount)}${i.est?' est':''}</span></div>`
-  ).join(''):'<div style="color:var(--faint);font-size:13px">Nothing undated.</div>';
+    `<div class="chip"><span class="pd" style="background:${META[i.sect].col}"></span><span class="nm">${esc(i.name)}</span><span class="vl">${i.sect==='cardpay'?fmt(i.amount)+' · <button class="lnk" onclick="setView(\'cards\')">set due day</button>':fmt(i.amount)+(i.spent?` · ${fmt0(i.spent)} logged`:(i.est?' est':''))}</span></div>`
+  ).join(''):'<div class="empty">Nothing undated.</div>';
 }
 
-function renderTimeline(items){
-  const start=half===1?1:16,end=half===1?15:31;
+function renderTimeline(items,tday){
+  const start=1,end=daysInMonth(selIdx);
   const payDays=paydaysIn(selIdx);
   const byDay={};items.forEach(i=>byDay[i.day]=(byDay[i.day]||0)+i.amount);
   const maxV=Math.max(1,...Object.values(byDay));
-  const W=900,H=170,padL=8,padR=8,padB=26,padT=12;
-  const n=end-start+1,plotW=W-padL-padR,plotH=H-padB-padT,slot=plotW/n,bw=Math.min(slot*0.62,34);
+  const narrow=window.innerWidth<640,fz=narrow?13:10;
+  const W=narrow?440:900,H=narrow?230:180,padL=8,padR=8,padB=26,padT=18;
+  const n=end-start+1,plotW=W-padL-padR,plotH=H-padB-padT,slot=plotW/n,bw=Math.min(slot*0.7,26);
   const sq=v=>Math.sqrt(v/maxV);
   let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="ui-monospace, Menlo, monospace">`;
   svg+=`<line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--line)"/>`;
-  for(let d=start;d<=end;d++){
-    const x=padL+slot*(d-start)+slot/2,v=byDay[d]||0;
-    if(payDays.includes(d))svg+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+plotH}" stroke="var(--income)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  for(let dd=start;dd<=end;dd++){
+    const x=padL+slot*(dd-start)+slot/2,v=byDay[dd]||0;
+    if(dd===tday)svg+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+plotH}" stroke="var(--gold)" stroke-width="2"/>`;
+    if(payDays.includes(dd))svg+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+plotH}" stroke="var(--income)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
     if(v>0){
-      const h=sq(v)*plotH,y=padT+plotH-h;
-      const its=items.filter(i=>i.day===d);let best=null,bv=-1;its.forEach(i=>{if(i.amount>bv){bv=i.amount;best=i.sect;}});
-      svg+=`<rect x="${x-bw/2}" y="${y}" width="${bw}" height="${h}" rx="3" fill="${META[best].col}"/>`;
-      svg+=`<text x="${x}" y="${y-4}" fill="var(--mute)" font-size="9" text-anchor="middle">$${Math.round(v)}</text>`;
+      const h=sq(v)*plotH,yy=padT+plotH-h;
+      const its=items.filter(i=>i.day===dd);let best=null,bv=-1;its.forEach(i=>{if(i.amount>bv){bv=i.amount;best=i.sect;}});
+      svg+=`<rect x="${x-bw/2}" y="${yy}" width="${bw}" height="${h}" rx="3" fill="${META[best].col}"/>`;
+      if(!narrow||v>=500)svg+=`<text x="${x}" y="${yy-4}" fill="var(--mute)" font-size="${fz}" text-anchor="middle">${v>=1000?'$'+(v/1000).toFixed(1)+'k':'$'+Math.round(v)}</text>`;
     }
-    if((d-start)%(n>15?2:1)===0||payDays.includes(d))
-      svg+=`<text x="${x}" y="${H-padB+15}" fill="${payDays.includes(d)?'var(--income)':'var(--faint)'}" font-size="9" text-anchor="middle">${d}</text>`;
+    if((dd-start)%(narrow?4:2)===0||payDays.includes(dd)||dd===tday)
+      svg+=`<text x="${x}" y="${H-padB+16}" fill="${dd===tday?'var(--gold)':payDays.includes(dd)?'var(--income)':'var(--faint)'}" font-size="${fz}" text-anchor="middle">${dd}</text>`;
   }
   svg+='</svg>';
   document.getElementById('timeline').innerHTML=svg;
 }
+
+// ---------- Quick log ----------
+window.openLog=()=>{
+  const vars=(S.recurring||[]).filter(it=>it.on!==false&&it.variable);
+  const undatedV=vars.filter(it=>it.day==null),datedV=vars.filter(it=>it.day!=null);
+  const opt=it=>`<option value="bill:${it.id}">${esc(it.name)}</option>`;
+  showModal(`<h2>Log spending</h2>
+    <p class="ph">Quick entry for what you just spent or a bill that just came in.</p>
+    <div class="formrow stack">
+      <label>What<select id="lg_what" onchange="logWhat()">
+        ${undatedV.length?`<optgroup label="Everyday spending (adds up through the month)">${undatedV.map(opt).join('')}</optgroup>`:''}
+        ${datedV.length?`<optgroup label="Bill amount that varies (sets that month's amount)">${datedV.map(opt).join('')}</optgroup>`:''}
+        <optgroup label="Other"><option value="oneoff">One-time payment from checking</option><option value="card">Charge on a credit card</option></optgroup>
+      </select></label>
+      <label id="lg_namewrap" hidden>Name<input id="lg_name" placeholder="e.g. Dinner out"></label>
+      <label>Amount $<input id="lg_amt" class="mono" type="number" inputmode="decimal" placeholder="0.00"></label>
+      <label>Date<input id="lg_date" type="date" value="${todayISO()}" onchange="logWhat()"></label>
+    </div>
+    <div id="lg_hint" class="note-block"></div>
+    <div class="imp-foot"><span></span><span style="display:flex;gap:8px"><button class="btn sm" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveLog()">Save</button></span></div>`);
+  logWhat();
+  setTimeout(()=>{const a=document.getElementById('lg_amt');if(a)a.focus();},30);
+};
+window.logWhat=()=>{
+  const v=document.getElementById('lg_what').value,hint=document.getElementById('lg_hint');
+  const dt=document.getElementById('lg_date').value||todayISO(),k=dt.slice(0,7),vi=monthStartIdx(k);
+  document.getElementById('lg_namewrap').hidden=!(v==='oneoff'||v==='card');
+  if(v.startsWith('bill:')){
+    const it=S.recurring.find(x=>x.id===v.slice(5));
+    hint.textContent=it.day==null
+      ?`${MONL[idxToYM(vi).m]} so far: ${fmt(Number(it.spent[k])||0)} logged against a ${fmt0(amountAt(it,vi))} estimate.`
+      :`Sets ${it.name}'s amount for ${MONL[idxToYM(vi).m]}${it.months[k]!=null?` (currently ${fmt(it.months[k])})`:''}.`;
+  }else hint.textContent=v==='card'?'Added to Credit-card charges. It goes on your card balance, not checking.':'Added to One-time payments. It comes out of checking.';
+};
+window.saveLog=()=>{
+  const v=document.getElementById('lg_what').value,amtEl=document.getElementById('lg_amt'),amt=Math.round(Number(amtEl.value)*100)/100;
+  if(!(amt>0)){amtEl.classList.add('invalid');amtEl.focus();return;}
+  const dt=document.getElementById('lg_date').value||todayISO(),k=dt.slice(0,7);
+  if(v.startsWith('bill:')){
+    const it=S.recurring.find(x=>x.id===v.slice(5));if(!it)return;
+    if(it.day==null)it.spent[k]=Math.round(((Number(it.spent[k])||0)+amt)*100)/100;
+    else it.months[k]=amt;
+  }else{
+    const name=(document.getElementById('lg_name').value||'').trim()||(v==='card'?'Card purchase':'Payment');
+    if(v==='card')S.card.push({id:uid(),name,amount:amt,date:dt,left:1,kind:'once',on:true});
+    else S.oneoff.push({id:uid(),name,amount:amt,date:dt,on:true});
+  }
+  closeModal();save();render();
+};
 
 function monthOverrides(vi){
   const key=ymKey(vi),out=[];
   if(S.incomeMonths&&S.incomeMonths[key]!=null)out.push('take-home override');
   if((S.ccBalances||[]).some(c=>c.payMonths&&c.payMonths[key]!=null))out.push('card payment override');
   if((S.recurring||[]).some(it=>it.variable&&it.months&&it.months[key]!=null))out.push('bill amount override');
+  if((S.recurring||[]).some(it=>it.monthAdj&&it.monthAdj[ymKey(billVi(it,vi))]))out.push('bill skipped or moved');
   return out;
 }
 function renderHeader(){
@@ -1345,40 +1700,33 @@ function renderHeader(){
 }
 
 function renderCards(){
-  const a=sectionSum('affirm',selIdx),p4=sectionSum('payin4',selIdx),cp=sectionSum('ccplans',selIdx),r=sectionSum('recurring',selIdx),cc=sectionSum('card',selIdx),oo=sectionSum('oneoff',selIdx);
-  const pay=cardPaymentTotal(selIdx);
-  const checking=r+a+p4+oo+pay;      // leaves your bank: recurring + installments + Pay in 4 (ACH) + one-time cash + card payments
-  const cardSpend=cp+cc;          // accrues to card balance: CC plans + charges (tracked here)
-  const inc=incomeFor(selIdx),left=inc-checking;
+  const pay=cardPaymentTotal(selIdx),out=cashOut(selIdx);
+  const inc=incomeFor(selIdx),left=inc-out;
   const hasOv=S.incomeMonths&&S.incomeMonths[ymKey(selIdx)]!=null;
-  const delta=pay-cardSpend;      // payment vs what's being charged (of tracked items)
   const m=MON[idxToYM(selIdx).m];
-  const nCards=(S.ccBalances||[]).filter(c=>c.payment>0).length;
+  const nCards=(S.ccBalances||[]).filter(c=>cardCashPay(c,selIdx)>0).length;
+  const balNow=(S.ccBalances||[]).reduce((s,c)=>s+balanceFor(c,selIdx),0);
+  const balNext=(S.ccBalances||[]).reduce((s,c)=>s+balanceFor(c,selIdx+1),0);
+  const delta=balNext-balNow;   // payments, interest and new charges all included
   document.getElementById('cards').innerHTML=[
-    `<div class="card accent"><div class="lab">${m} cash outflow</div><div class="big">${fmt(checking)}</div><div class="note">incl. ${fmt0(pay)} card payments · ${inc?Math.round(checking/inc*100)+'% of take-home':'set paycheck'}</div></div>`,
-    `<div class="card" style="border-color:rgba(106,169,160,.4)"><div class="lab">Card payments</div><div class="big" style="color:var(--ccplan)">${fmt(pay)}</div><div class="note">${nCards?'across '+nCards+' card'+(nCards>1?'s':'')+' · set below':'set per card below'}</div></div>`,
-    `<div class="card left ${left<0?'neg':''}"><div class="lab">Remaining cash${hasOv?'<span class="incov-tag">income override</span>':''}</div><div class="big">${inc?fmt0(left):'—'}</div><div class="note">${inc?(left<0?'over take-home':'after all cash outflow'):'add paycheck'}</div></div>`,
-    `<div class="card"><div class="lab">Card balance trend</div><div class="big" style="color:${delta<0?'var(--card)':'var(--income)'}">${delta<0?'+'+fmt0(-delta):'−'+fmt0(delta)}</div><div class="note">${delta<0?'tracked charges exceed payments':'payments cover tracked charges'}</div></div>`,
+    `<div class="card accent"><div class="lab">${m} cash out</div><div class="big">${fmt0(out)}</div><div class="note">${inc?Math.round(out/inc*100)+'% of take-home':'set your pay in Settings'}</div></div>`,
+    `<div class="card left ${left<0?'neg':''}"><div class="lab">${m} cash left${hasOv?'<span class="incov-tag">entered income</span>':''}</div><div class="big">${inc?fmt0(left):'—'}</div><div class="note">${inc?(left<0?'more going out than coming in':'after everything that leaves checking'):'set your pay in Settings'}</div></div>`,
+    `<div class="card" style="border-color:rgba(106,169,160,.4)"><div class="lab">Card payments</div><div class="big" style="color:var(--ccplan)">${fmt0(pay)}</div><div class="note">${nCards?'to '+nCards+' card'+(nCards>1?'s':''):'none scheduled'} · included in cash out</div></div>`,
+    `<div class="card"><div class="lab">Card balances</div><div class="big">${fmt0(balNow)}</div><div class="note" style="color:${delta>0.5?'var(--card)':'var(--income)'}">${Math.abs(delta)<0.5?'flat next month':delta<0?'down '+fmt0(-delta)+' by next month':'up '+fmt0(delta)+' by next month'}</div></div>`,
   ].join('');
 }
 
 let PROJDATA=[];
 function projHover(evt,vi){
-  const d=PROJDATA.find(x=>x.vi===vi);if(!d)return;
+  const dd=PROJDATA.find(x=>x.vi===vi);if(!dd)return;
   const ym=idxToYM(vi);
-  const rows=[
-    ['Recurring',d.recurring,'var(--recur)'],
-    ['Installments',d.affirm,'var(--affirm)'],
-    ['Pay in 4',d.payin4,'var(--pay4)'],
-    ['One-time',d.oneoff,'var(--oneoff)'],
-    ['Card payments',d.pay,'var(--ccplan)'],
-    ['CC plans',d.ccplans,'var(--ccplan)'],
-    ['Card charges',d.card,'var(--card)'],
-  ].filter(r=>r[1]>0);
+  const row=(nm,v,col,strong)=>`<div class="li"><span class="nm"${strong?' style="color:var(--ink);font-weight:600"':''}>${col?`<span class="pd" style="background:${col}"></span>`:''}${nm}</span><span class="vl"${strong?' style="color:var(--ink);font-weight:600"':''}>${fmt0(v)}</span></div>`;
   let html=`<div class="pt-title">${MONL[ym.m]} ${ym.y}</div><div class="legend">`;
-  rows.forEach(([nm,v,col])=>{html+=`<div class="li"><span class="nm"><span class="pd" style="background:${col}"></span>${nm}</span><span class="vl">${fmt0(v)}</span></div>`;});
-  html+=`<div class="li" style="border-top:1px solid var(--line);margin-top:3px;padding-top:4px"><span class="nm" style="color:var(--ink);font-weight:600">Total</span><span class="vl" style="color:var(--ink);font-weight:600">${fmt0(d.total)}</span></div>`;
-  if(d.inc>0){const rem=d.inc-d.checking;html+=`<div class="li"><span class="nm" style="color:${rem<0?'var(--card)':'var(--income)'}">${rem<0?'Over take-home':'Cash remaining'}</span><span class="vl" style="color:${rem<0?'var(--card)':'var(--income)'}">${fmt0(Math.abs(rem))}</span></div>`;}
+  [['Recurring',dd.recurring,'var(--recur)'],['Installments',dd.affirm,'var(--affirm)'],['Pay in 4',dd.payin4,'var(--pay4)'],['One-time',dd.oneoff,'var(--oneoff)'],['Card payments',dd.pay,'var(--ccplan)']]
+    .filter(r=>r[1]>0).forEach(r=>{html+=row(...r);});
+  html+=`<div style="border-top:1px solid var(--line);margin-top:3px;padding-top:4px">${row('Cash out',dd.checking,null,true)}</div>`;
+  if(dd.inc>0){const rem=dd.inc-dd.checking;html+=`<div class="li"><span class="nm" style="color:${rem<0?'var(--card)':'var(--income)'}">${rem<0?'Over take-home':'Cash left'}</span><span class="vl" style="color:${rem<0?'var(--card)':'var(--income)'}">${fmt0(Math.abs(rem))}</span></div>`;}
+  if(dd.card_>0)html+=`<div class="li" style="margin-top:4px"><span class="nm" style="color:var(--mute)">Charged to cards</span><span class="vl">${fmt0(dd.card_)}</span></div>`;
   html+='</div>';
   const tip=document.getElementById('projTip');
   tip.innerHTML=html;
@@ -1397,101 +1745,79 @@ function projMove(evt){
 }
 function projHoverOut(){document.getElementById('projTip').style.display='none';}
 function renderProjection(){
-  const base=curIdx()-1,N=12;
-  const data=[];
-  for(let k=0;k<N;k++){const vi=base+k;const sums={};SECTKEYS.forEach(s=>sums[s]=sectionSum(s,vi));
-    sums.pay=cardPaymentTotal(vi);
-    sums.checking=sums.recurring+sums.affirm+sums.payin4+sums.oneoff+sums.pay; sums.card_=sums.ccplans+sums.card; sums.total=sums.checking+sums.card_; sums.vi=vi; sums.inc=incomeFor(vi); data.push(sums);}
+  const narrow=window.innerWidth<640;
+  const N=narrow?7:12,base=curIdx()-1,data=[];
+  for(let k=0;k<N;k++){
+    const vi=base+k,s={vi};SECTKEYS.forEach(x=>s[x]=sectionSum(x,vi));
+    s.pay=cardPaymentTotal(vi);s.checking=s.recurring+s.affirm+s.payin4+s.oneoff+s.pay;s.card_=s.ccplans+s.card;s.inc=incomeFor(vi);
+    data.push(s);
+  }
   PROJDATA=data;
-  const checkingArr=data.map(d=>d.checking), cardArr=data.map(d=>d.card_), incArr=data.map(d=>d.inc);
-  const maxV=Math.max(...checkingArr,...cardArr,...incArr,1)*1.12;
-  const W=720,H=300,padL=10,padR=10,padB=30,padT=16;
+  const maxV=Math.max(...data.map(x=>Math.max(x.checking,x.card_,x.inc)),1)*1.12;
+  const fz=narrow?13:10;
+  const W=narrow?420:720,H=narrow?300:300,padL=10,padR=10,padB=30,padT=26;
   const plotH=H-padB-padT,plotW=W-padL-padR,slot=plotW/N;
-  const groupW=slot*0.74, chkW=groupW*0.6, cardW=groupW*0.3, gap=groupW*0.1;
+  const groupW=slot*0.74,chkW=groupW*0.6,cardW=groupW*0.3,gap=groupW*0.1;
   const yOf=v=>padT+plotH-(v/maxV*plotH);
-  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="ui-monospace, Menlo, monospace">`;
-  for(let g=1;g<=3;g++){const v=maxV*g/3.3,y=yOf(v);svg+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/><text x="${padL+2}" y="${y-4}" fill="var(--faint)" font-size="9">${fmt0(v)}</text>`;}
-  data.forEach((d,k)=>{
-    const gx=padL+slot*k+(slot-groupW)/2, sel=d.vi===selIdx;
-    const chkX=gx, cardX=gx+chkW+gap;
-    // checking stack (recurring + affirm)
+  const halo=`paint-order="stroke" stroke="var(--panel)" stroke-width="4" stroke-linejoin="round"`;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" font-family="ui-monospace, Menlo, monospace">`,labels='';
+  for(let g=1;g<=3;g++){const v=maxV*g/3.3,y=yOf(v);svg+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;labels+=`<text x="${padL+2}" y="${y-4}" fill="var(--faint)" font-size="${fz-1}" ${halo}>${fmt0(v)}</text>`;}
+  data.forEach((x,k)=>{
+    const gx=padL+slot*k+(slot-groupW)/2,sel=x.vi===selIdx,chkX=gx,cardX=gx+chkW+gap;
+    if(sel)svg+=`<rect x="${gx-3}" y="${padT-2}" width="${groupW+6}" height="${plotH+2}" fill="var(--gold)" opacity="0.07" rx="4"/>`;
     let yb=padT+plotH;
-    [['recurring','var(--recur)'],['affirm','var(--affirm)'],['payin4','var(--pay4)'],['oneoff','var(--oneoff)'],['pay','var(--ccplan)']].forEach(([key,col])=>{const val=d[key];if(val<=0)return;const h=val/maxV*plotH;yb-=h;svg+=`<rect x="${chkX}" y="${yb}" width="${chkW}" height="${h}" fill="${col}" ${key==='pay'?'opacity="0.55"':''} rx="2"/>`;});
-    // cash remaining cap over checking bar (uses this month's own take-home, which may be overridden)
-    if(d.inc>0){
-      const rem=d.inc-d.checking,yInc=yOf(d.inc),yChk=yOf(d.checking);
+    [['recurring','var(--recur)'],['affirm','var(--affirm)'],['payin4','var(--pay4)'],['oneoff','var(--oneoff)'],['pay','var(--ccplan)']].forEach(([key,col])=>{const val=x[key];if(val<=0)return;const h=val/maxV*plotH;yb-=h;svg+=`<rect x="${chkX}" y="${yb}" width="${chkW}" height="${h}" fill="${col}" ${key==='pay'?'opacity="0.55"':''} rx="2"/>`;});
+    if(x.inc>0){
+      const rem=x.inc-x.checking,yInc=yOf(x.inc),yChk=yOf(x.checking);
       if(rem>0)svg+=`<rect x="${chkX}" y="${yInc}" width="${chkW}" height="${Math.max(0,yChk-yInc)}" fill="var(--income)" opacity="0.16" stroke="var(--income)" stroke-opacity="0.55" stroke-width="1" rx="2"/>`;
       else if(rem<0)svg+=`<rect x="${chkX}" y="${yChk}" width="${chkW}" height="${Math.max(0,yInc-yChk)}" fill="var(--card)" opacity="0.22" stroke="var(--card)" stroke-opacity="0.7" stroke-width="1" rx="2"/>`;
     }
-    // separate card-spend bar (ccplans + charges)
     let cyb=padT+plotH;
-    [['ccplans','var(--ccplan)'],['card','var(--card)']].forEach(([key,col])=>{const val=d[key];if(val<=0)return;const h=val/maxV*plotH;cyb-=h;svg+=`<rect x="${cardX}" y="${cyb}" width="${cardW}" height="${h}" fill="${col}" opacity="0.9" rx="2"/>`;});
-    if(d.card_>0)svg+=`<text x="${cardX+cardW/2}" y="${yOf(d.card_)-3}" fill="var(--ccplan)" font-size="7.5" text-anchor="middle">card</text>`;
-    if(sel){svg+=`<rect x="${gx-3}" y="${padT-2}" width="${groupW+6}" height="${plotH+2}" fill="var(--gold)" opacity="0.06" rx="4"/>`;
-      if(d.inc>0){const rem=d.inc-d.checking;svg+=`<text x="${chkX+chkW/2}" y="${Math.max(yOf(Math.max(d.inc,d.checking))-7,12)}" fill="${rem<0?'var(--card)':'var(--income)'}" font-size="10" text-anchor="middle">${rem<0?'over '+fmt0(-rem):fmt0(rem)+' cash'}</text>`;}
-    }
-    const ym=idxToYM(d.vi);
-    svg+=`<text x="${gx+groupW/2}" y="${H-padB+14}" fill="${sel?'var(--ink)':'var(--faint)'}" font-size="10" text-anchor="middle">${MON[ym.m]}</text>`;
-    if(ym.m===0)svg+=`<text x="${gx+groupW/2}" y="${H-padB+25}" fill="var(--faint)" font-size="8" text-anchor="middle">'${String(ym.y).slice(2)}</text>`;
-    svg+=`<rect x="${padL+slot*k}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" style="cursor:pointer" onclick="selectMonth(${d.vi})" onmouseenter="projHover(event,${d.vi})" onmousemove="projMove(event)" onmouseleave="projHoverOut()"/>`;
+    [['ccplans','var(--ccplan)'],['card','var(--card)']].forEach(([key,col])=>{const val=x[key];if(val<=0)return;const h=val/maxV*plotH;cyb-=h;svg+=`<rect x="${cardX}" y="${cyb}" width="${cardW}" height="${h}" fill="${col}" opacity="0.9" rx="2"/>`;});
+    if(sel&&x.inc>0){const rem=x.inc-x.checking,cx=Math.min(Math.max(gx+groupW/2,46),W-46);labels+=`<text x="${cx}" y="${padT-10}" fill="${rem<0?'var(--card)':'var(--income)'}" font-size="${fz}" text-anchor="middle" ${halo}>${rem<0?'over '+fmt0(-rem):fmt0(rem)+' left'}</text>`;}
+    const ym=idxToYM(x.vi);
+    svg+=`<text x="${gx+groupW/2}" y="${H-padB+14}" fill="${sel?'var(--ink)':'var(--faint)'}" font-size="${fz}" text-anchor="middle">${MON[ym.m]}</text>`;
+    if(ym.m===0)svg+=`<text x="${gx+groupW/2}" y="${H-padB+26}" fill="var(--faint)" font-size="${fz-2}" text-anchor="middle">'${String(ym.y).slice(2)}</text>`;
+    svg+=`<rect x="${padL+slot*k}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" style="cursor:pointer" onclick="selectMonth(${x.vi})" onmouseenter="projHover(event,${x.vi})" onmousemove="projMove(event)" onmouseleave="projHoverOut()"/>`;
   });
-  // stepped take-home line: one flat segment per month, connected by a right-angle
-  // riser (not a straight L, which would diagonally interpolate between differing
-  // months) so overrides read as distinct steps, not a slope.
-  if(data.some(d=>d.inc>0)){
+  if(data.some(x=>x.inc>0)){
     let path='',prevY=null;
-    data.forEach((d,k)=>{
-      const gx=padL+slot*k+(slot-groupW)/2,y=yOf(d.inc);
-      if(k===0)path='M'+gx+' '+y+' ';
-      else path+='L'+gx+' '+prevY+' L'+gx+' '+y+' ';
-      path+='L'+(gx+groupW)+' '+y+' ';
-      prevY=y;
-    });
-    svg+=`<path d="${path}" fill="none" stroke="var(--income)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
-    const selD=data.find(d=>d.vi===selIdx);
-    if(selD&&selD.inc>0)svg+=`<text x="${W-padR-2}" y="${yOf(selD.inc)-4}" fill="var(--income)" font-size="9" text-anchor="end">take-home ${fmt0(selD.inc)}</text>`;
+    data.forEach((x,k)=>{const gx=padL+slot*k+(slot-groupW)/2,y=yOf(x.inc);if(k===0)path='M'+gx+' '+y+' ';else path+='L'+gx+' '+prevY+' L'+gx+' '+y+' ';path+='L'+(gx+groupW)+' '+y+' ';prevY=y;});
+    svg+=`<path d="${path}" fill="none" stroke="var(--income)" stroke-width="1.5" stroke-dasharray="5 4" pointer-events="none"/>`;
   }
-  svg+='</svg>';
+  svg+=labels+'</svg>';
   document.getElementById('proj').innerHTML=svg;
 
-  const totals=data.map(d=>d.total);
-  // Only look at drops from the month currently being viewed onward, so paging forward
-  // past a relief that already happened surfaces the next one instead of repeating stale news.
-  const searchFrom=Math.max(selIdx,data[0].vi);
-  let drop={amt:0,vi:null};
-  for(let k=1;k<N;k++){if(data[k].vi<searchFrom)continue;const d=totals[k-1]-totals[k];if(d>drop.amt)drop={amt:d,vi:data[k].vi};}
+  // Biggest relief: a lasting drop in what leaves checking each month. One-time payments are
+  // left out, so a busy month isn't mistaken for a lower monthly load.
   const el=document.getElementById('insight');
-  if(drop.vi!=null&&drop.amt>1){
-    const ym=idxToYM(drop.vi);
-    // Anything with a start+left window (affirm/ccplans installments, and card items set up the same way)
-    // ends the month its last payment lands in; one-time payments end right after their single active month.
-    const installs=[...S.affirm,...S.ccplans,...S.card];
-    const endingInstalls=installs.filter(it=>{const st=parseStart(it.date);return st!=null&&it.left!==''&&it.left!=null&&st+Number(it.left)-1===drop.vi-1;}).map(it=>it.name);
-    const endingOneoffs=(S.oneoff||[]).filter(it=>{const st=parseStart(it.date);return st!=null&&st===drop.vi-1;}).map(it=>it.name);
-    const ending=[...endingInstalls,...endingOneoffs];
-    el.innerHTML=`Biggest relief: expenses drop <strong>${fmt0(drop.amt)}/mo</strong> starting <strong>${MONL[ym.m]} ${ym.y}</strong>${ending.length?' as '+ending.map(esc).join(' &amp; ')+' clear'+(ending.length>1?'':'s'):''}.`;
-  }else el.innerHTML='Add installment plans with payments-left to see when your monthly load drops.';
+  const committed=vi=>cashOut(vi)-sectionSum('oneoff',vi);
+  const from=Math.max(selIdx,curIdx());let drop={amt:0,vi:null},prev=committed(from);
+  for(let vi=from+1;vi<=from+18;vi++){const c=committed(vi);if(prev-c>drop.amt+0.5)drop={amt:prev-c,vi};prev=c;}
+  if(drop.vi!=null&&drop.amt>=1){
+    const vi=drop.vi,pv=vi-1,ym=idxToYM(vi),ends=[];
+    const live=(it,sect,v)=>{const e=evalItem(it,sect,v);return e.status==='on'&&e.amt>0;};
+    ['affirm','ccplans','payin4','recurring'].forEach(sect=>(S[sect]||[]).forEach(it=>{if(it.on!==false&&live(it,sect,pv)&&!live(it,sect,vi))ends.push(it.name);}));
+    (S.ccBalances||[]).forEach(c=>{if(cardCashPay(c,pv)>0&&cardCashPay(c,vi)<=0)ends.push(c.name+' (paid off)');});
+    const list=ends.length>3?ends.slice(0,3).map(esc).join(', ')+` and ${ends.length-3} more`:ends.map(esc).join(' and ');
+    el.innerHTML=`Biggest relief ahead: cash going out drops <strong>${fmt0(drop.amt)}/mo</strong> starting <strong>${MONL[ym.m]} ${ym.y}</strong>${ends.length?' as '+list+(ends.length>1?' end':' ends'):''}.`;
+  }else el.innerHTML='No drop in your monthly payments in the next 18 months. Installments with payments left, and cards with payoff payments, show up here when they end.';
 }
+window.addEventListener('resize',()=>{clearTimeout(window.__rz);window.__rz=setTimeout(()=>{if(view==='home')renderProjection();else if(view==='calendar')renderCalendar();},200);});
 
 function renderDonut(){
-  const sums={affirm:sectionSum('affirm',selIdx),payin4:sectionSum('payin4',selIdx),ccplans:sectionSum('ccplans',selIdx),recurring:sectionSum('recurring',selIdx),oneoff:sectionSum('oneoff',selIdx),card:sectionSum('card',selIdx)};
-  const checking=sums.recurring+sums.affirm+sums.payin4+sums.oneoff, cardSpend=sums.ccplans+sums.card, total=checking+cardSpend;
-  document.getElementById('compSub').textContent='Cash vs card · '+MONL[idxToYM(selIdx).m];
-  // outer ring: cash vs card; we render arcs grouped/ordered so cash sits together and card sits together
-  const segs=[['Recurring',sums.recurring,'var(--recur)'],['Installments',sums.affirm,'var(--affirm)'],['Pay in 4',sums.payin4,'var(--pay4)'],['One-time',sums.oneoff,'var(--oneoff)'],['CC plans',sums.ccplans,'var(--ccplan)'],['Card charges',sums.card,'var(--card)']];
+  const s={recurring:sectionSum('recurring',selIdx),affirm:sectionSum('affirm',selIdx),payin4:sectionSum('payin4',selIdx),oneoff:sectionSum('oneoff',selIdx),pay:cardPaymentTotal(selIdx),ccplans:sectionSum('ccplans',selIdx),card:sectionSum('card',selIdx)};
+  const total=s.recurring+s.affirm+s.payin4+s.oneoff+s.pay;
+  document.getElementById('compSub').textContent='Cash leaving checking · '+MONL[idxToYM(selIdx).m]+' (same total as "cash out")';
+  const segs=[['Recurring',s.recurring,'var(--recur)'],['Installments',s.affirm,'var(--affirm)'],['Pay in 4',s.payin4,'var(--pay4)'],['One-time',s.oneoff,'var(--oneoff)'],['Card payments',s.pay,'var(--ccplan)']];
   const R=64,C=2*Math.PI*R,cx=80,cy=80;let off=0,arcs='';
   if(total>0)segs.forEach(([nm,v,col])=>{if(v<=0)return;const len=v/total*C;arcs+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${col}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;off+=len;});
   else arcs=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--panel2)" stroke-width="22"/>`;
-  document.getElementById('donut').innerHTML=`<svg viewBox="0 0 160 160" width="160" height="160" font-family="ui-monospace, Menlo, monospace">${arcs}<text x="${cx}" y="${cy-3}" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">${fmt0(total)}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" fill="var(--faint)" font-size="9">total</text></svg>`;
-  document.getElementById('donutLegend').innerHTML=
-    `<div class="li" style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin-bottom:-2px">From checking · ${fmt0(checking)}</div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:var(--recur)"></span>Recurring</span><span class="vl">${fmt(sums.recurring)}</span></div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:var(--affirm)"></span>Installments</span><span class="vl">${fmt(sums.affirm)}</span></div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:var(--pay4)"></span>Pay in 4</span><span class="vl">${fmt(sums.payin4)}</span></div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:var(--oneoff)"></span>One-time</span><span class="vl">${fmt(sums.oneoff)}</span></div>`+
-    `<div class="li" style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin:6px 0 -2px">On credit card · ${fmt0(cardSpend)}</div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:var(--ccplan)"></span>CC plans</span><span class="vl">${fmt(sums.ccplans)}</span></div>`+
-    `<div class="li"><span class="nm"><span class="pd" style="background:var(--card)"></span>Card charges</span><span class="vl">${fmt(sums.card)}</span></div>`;
+  document.getElementById('donut').innerHTML=`<svg viewBox="0 0 160 160" width="160" height="160" font-family="ui-monospace, Menlo, monospace">${arcs}<text x="${cx}" y="${cy-3}" text-anchor="middle" fill="var(--ink)" font-size="17" font-weight="600">${fmt0(total)}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" fill="var(--faint)" font-size="9">cash out</text></svg>`;
+  const li=(nm,v,col)=>`<div class="li"><span class="nm"><span class="pd" style="background:${col}"></span>${nm}</span><span class="vl">${fmt(v)}</span></div>`;
+  document.getElementById('donutLegend').innerHTML=segs.map(x=>li(...x)).join('')+
+    `<div class="li" style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.8px;margin:8px 0 -2px">Also charged to cards · ${fmt0(s.ccplans+s.card)}</div>`+
+    `<div class="note-block" style="margin-top:2px">Card plans ${fmt(s.ccplans)} and card charges ${fmt(s.card)} go on your card balances, not checking. You pay them later through card payments.</div>`;
 }
 
 window.toggleDone=(sect)=>{doneOpen[sect]=!doneOpen[sect];renderSections();};
@@ -1509,8 +1835,9 @@ function renderCardBalances(){
     <div><span class="lab">Card</span><input value="${esc(c.name)}" oninput="ccbInput('${c.id}','name',this.value)"></div>
     <div><span class="lab" style="cursor:help" title="${balTitle}">Balance $ <span class="btag${isAct?' act':''}" id="ccbtag_${c.id}">${isAct?'actual':'proj'}</span></span><input class="mono" type="number" inputmode="decimal" value="${bal?Math.round(bal*100)/100:''}" placeholder="0" title="${balTitle}" oninput="ccbBalInput('${c.id}',this.value)"></div>
     <div><span class="lab">APR %</span><input class="mono" type="number" inputmode="decimal" value="${c.apr||''}" placeholder="0" oninput="ccbInput('${c.id}','apr',this.value)"></div>
-    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Your normal monthly payment to this card. Used every month by default, and always used for the payoff estimate below.">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" title="Your normal monthly payment to this card. Used every month by default, and always used for the payoff estimate below." oninput="ccbInput('${c.id}','payment',this.value)"></div>
-    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Doesn't affect the payoff estimate.">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${hasOv?c.payMonths[key]:''}" placeholder="${c.payment||0}" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Doesn't affect the payoff estimate." oninput="ccbMonthInput('${c.id}',this.value)"></div>
+    <div><span class="lab" style="cursor:help" title="Day of the month this card's payment is due. Places the payment on the Calendar and in paycheck coverage.">Due day</span><input class="mono" type="number" inputmode="numeric" min="1" max="31" value="${c.dueDay||''}" placeholder="—" title="Day of the month this card's payment is due" oninput="ccbInput('${c.id}','dueDay',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Your normal monthly payment to this card. Used every month by default, and stops once the card is paid off.">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" title="Your normal monthly payment to this card. Used every month by default, and stops once the card is paid off." oninput="ccbInput('${c.id}','payment',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Counted in the payoff estimate.">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${hasOv?c.payMonths[key]:''}" placeholder="${c.payment||0}" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Counted in the payoff estimate." oninput="ccbMonthInput('${c.id}',this.value)"></div>
     <div><span class="lab" style="color:var(--income);cursor:help" title="What's left on this card once ${esc(mLabel)}'s payment goes through. This is the figure next month builds on.">After pay</span><span class="intv" id="ccbafter_${c.id}" style="color:var(--income)">$0.00</span></div>
     <div><span class="lab">Interest/mo</span><span class="intv" id="ccbint_${c.id}">$0.00</span></div>
     <div style="text-align:right"><button class="icon-btn" title="remove" onclick="ccbDel('${c.id}')">🗑</button></div>
@@ -1519,17 +1846,111 @@ function renderCardBalances(){
   const sel=document.getElementById('chargeCardSel');
   if(sel)sel.innerHTML=`<option value="">No card</option>`+S.ccBalances.map(c=>
     `<option value="${c.id}"${S.chargeCardId===c.id?' selected':''}>${esc(c.name)}</option>`).join('');
+  document.getElementById('stratAvalanche').classList.toggle('active',payoffStrategy==='avalanche');
+  document.getElementById('stratSnowball').classList.toggle('active',payoffStrategy==='snowball');
+  const pt=document.getElementById('planTarget'),pl=document.getElementById('planLimit'),ex=document.getElementById('extraPay');
+  if(document.activeElement!==pt)pt.value=S.debtPlan.target||'';
+  if(document.activeElement!==pl)pl.value=S.debtPlan.spendLimit||'';
+  if(document.activeElement!==ex)ex.value=S.debtPlan.extra||'';
   ccbRecalc();
 }
-// Ongoing charges bill back to the card, so the balance falls by (payment - charges)
-// each month; the closed form is the same with that net in place of the payment.
-function payoffOf(bal,apr,pay,charge){
-  const im=apr/100/12, interest=bal*im, ch=Number(charge)||0, net=pay-ch;
-  if(bal<=0)return {state:'none',interest:0};
-  if(pay<=0)return {state:'nopay',interest,charge:ch};
-  if(net<=interest)return {state:'under',interest,charge:ch,net};
-  const n=Math.ceil(-Math.log(1-bal*im/net)/Math.log(1+im));
-  return {state:'ok',interest,charge:ch,net,n,paid:net*n-bal};
+window.setPlan=(field,val)=>{
+  if(field==='target')S.debtPlan.target=/^\d{4}-\d{2}$/.test(val)?val:'';
+  else S.debtPlan[field]=Math.max(0,Number(val)||0);
+  clearTimeout(ccbT);ccbT=setTimeout(save,400);
+  ccbRecalc();renderCards();
+};
+// Is the scheduled plan on track? Uses each card's own month-by-month payments.
+function planStatus(){
+  const cur=curIdx(),cards=(S.ccBalances||[]).filter(c=>balanceFor(c,cur)>0.005);
+  if(!cards.length)return null;
+  const res=cards.map(c=>({c,po:payoffPlan(c,cur,cardChargesFor(c,cur+1))}));
+  const bad=res.filter(r=>r.po.state!=='ok');
+  const tgt=S.debtPlan.target?monthStartIdx(S.debtPlan.target):null;
+  const goal=tgt==null?'':MONL[idxToYM(tgt).m]+' '+idxToYM(tgt).y;
+  if(bad.length)return {html:`<span class="warnt">Not on track:</span> ${bad.map(r=>esc(r.c.name)).join(' and ')} ${bad.length>1?"aren't":"isn't"} scheduled to be paid off. <button class="lnk" onclick="setView('cards')">Plan payments</button>`,ok:false,tgt};
+  const lastV=Math.max(...res.map(r=>r.po.v)),ym=idxToYM(lastV),when=MONL[ym.m]+' '+ym.y;
+  if(tgt==null)return {html:`Cards paid off by <strong>${when}</strong> with your scheduled payments.`,ok:true,lastV,tgt};
+  if(lastV<=tgt)return {html:`<span class="okt">On track:</span> cards paid off by <strong>${when}</strong> (goal ${goal}).`,ok:true,lastV,tgt};
+  return {html:`<span class="warnt">Behind:</span> cards paid off by <strong>${when}</strong>, ${lastV-tgt} month${lastV-tgt===1?'':'s'} after your ${goal} goal.`,ok:false,lastV,tgt};
+}
+// Pays all cards together month by month. Each card gets its scheduled payment (or, with
+// `flat`, one total split by payoff order); money freed when a card is paid off, plus any
+// extra, goes to the next card in payoff order.
+function simDebt(opt){
+  const from=curIdx(),order=opt.order||'avalanche',extra=Number(opt.extra)||0,stopAt=opt.until==null?from+360:opt.until;
+  const cs=(S.ccBalances||[]).map(c=>({c,bal:balanceFor(c,from),im:(Number(c.apr)||0)/100/12,paidV:null}));
+  cs.forEach(x=>{if(x.bal<=0.005)x.paidV=from-1;});
+  let interest=0;
+  for(let v=from;v<=stopAt;v++){
+    if(cs.every(x=>x.paidV!=null))break;
+    let pool=extra+(opt.flat||0);
+    cs.forEach(x=>{
+      if(opt.flat){return;}
+      const ov=x.c.payMonths&&x.c.payMonths[ymKey(v)],sched=ov!=null?Number(ov):(Number(x.c.payment)||0);
+      const pay=Math.min(sched,x.bal);x.bal-=pay;pool+=sched-pay;
+    });
+    const live=cs.filter(x=>x.bal>0.005).sort((a,b)=>order==='snowball'?a.bal-b.bal:b.im-a.im);
+    for(const x of live){if(pool<=0)break;const p=Math.min(pool,x.bal);x.bal-=p;pool-=p;}
+    cs.forEach(x=>{
+      if(x.bal<=0.005&&x.paidV==null)x.paidV=v;
+      const int=Math.max(0,x.bal)*x.im;interest+=int;x.bal=Math.max(0,x.bal)+int+cardChargesFor(x.c,v);
+    });
+  }
+  const done=cs.every(x=>x.paidV!=null);
+  return {done,v:done?Math.max(...cs.map(x=>x.paidV)):null,interest,cards:cs};
+}
+function renderPlanOut(){
+  const out=document.getElementById('planOut');if(!out)return;
+  const st=planStatus(),cur=curIdx(),lim=S.debtPlan.spendLimit;
+  if(!st){out.innerHTML='No card balances to pay off right now.';return;}
+  const lines=[st.html];
+  if(st.tgt!=null){
+    if(st.tgt<cur)lines.push('Pick a goal month in the future.');
+    else{
+      // smallest equal monthly total that clears everything by the goal month
+      let lo=0,hi=Math.max(100,(S.ccBalances||[]).reduce((s,c)=>s+balanceFor(c,cur),0)*1.5+lim*2);
+      if(!simDebt({flat:hi,until:st.tgt,order:payoffStrategy}).done)lines.push("That goal can't be reached at any realistic payment with this much new card spending.");
+      else{for(let i=0;i<40;i++){const mid=(lo+hi)/2;if(simDebt({flat:mid,until:st.tgt,order:payoffStrategy}).done)hi=mid;else lo=mid;}
+        const g=idxToYM(st.tgt);
+        lines.push(`To be debt-free by ${MONL[g.m]} ${g.y}: about <strong>${fmt0(Math.ceil(hi))}/mo</strong> total across your cards from ${MONL[idxToYM(cur).m]} on, paying them off in ${payoffStrategy} order.`);}
+    }
+  }
+  const now=monthlyChargesFor(cur);
+  if(lim)lines.push(`Card spending in ${MONL[idxToYM(cur).m]}: <strong>${fmt0(now)}</strong> of your ${fmt0(lim)} limit${now>lim?' — <span class="warnt">over the limit</span>':''}. The plan assumes ${fmt0(lim)}/mo of new charges from next month.`);
+  else lines.push(`<span class="warnt">No card spending limit set.</span> The plan assumes only the ${fmt0(monthlyChargesFor(cur+1))}/mo of card charges you've scheduled, so any other spending on cards pushes payoff later.`);
+  out.innerHTML=lines.map(x=>`<div style="margin:3px 0">${x}</div>`).join('');
+}
+function renderWhatIf(){
+  const out=document.getElementById('whatIfOut');if(!out)return;
+  if(!(S.ccBalances||[]).some(c=>balanceFor(c,curIdx())>0.005)){out.innerHTML='No card balances to pay off right now.';return;}
+  const extra=S.debtPlan.extra;
+  const show=r=>r.done?`paid off <strong>${MONL[idxToYM(r.v).m]} ${idxToYM(r.v).y}</strong>, about ${fmt0(r.interest)} interest`:'not paid off within 30 years';
+  const a=simDebt({order:'avalanche',extra}),b=simDebt({order:'snowball',extra});
+  let html=`With your scheduled payments${extra?` plus <strong>${fmt0(extra)}/mo extra</strong>`:''}, and each paid-off card's payment rolled onto the next:<div style="margin:4px 0 0">• Avalanche: ${show(a)}</div><div>• Snowball: ${show(b)}</div>`;
+  if(extra){const base=simDebt({order:payoffStrategy,extra:0}),now=payoffStrategy==='snowball'?b:a;
+    if(base.done&&now.done)html+=`<div style="margin-top:4px;color:var(--mute)">Without the extra: ${show(base)}. The extra saves about ${fmt0(Math.max(0,base.interest-now.interest))} in interest${base.v>now.v?` and ${base.v-now.v} month${base.v-now.v===1?'':'s'}`:''}.</div>`;}
+  out.innerHTML=html;
+}
+// Walks the card forward month by month using the same rules as the projection, so
+// planned payments for specific months and balances you've entered all count.
+function payoffPlan(c,from,charge){
+  const im=(Number(c.apr)||0)/100/12, ch=Number(charge)||0, start=balanceFor(c,from);
+  if(start<=0)return {state:'none',interest:0};
+  let bal=start,interest=0;
+  for(let v=from;v<from+360;v++){
+    const key=ymKey(v);
+    if(v>from&&c.balanceMonths&&c.balanceMonths[key]!=null)bal=Math.max(0,Number(c.balanceMonths[key])||0);
+    const ov=c.payMonths&&c.payMonths[key];
+    const pay=ov!=null?Number(ov):Math.min(Number(c.payment)||0,bal);
+    const after=Math.max(0,bal-pay);
+    if(after<0.005)return {state:'ok',n:v-from+1,v,paid:interest,charge:ch};
+    const int=after*im;
+    interest+=int;
+    bal=after+int+cardChargesFor(c,v);
+  }
+  const net=(Number(c.payment)||0)-ch;
+  return (Number(c.payment)||0)<=0?{state:'nopay',interest:start*im,charge:ch}:{state:'under',interest:start*im,charge:ch,net};
 }
 function ccbRecalc(){
   let totB=0,totI=0,totP=0;
@@ -1542,7 +1963,7 @@ function ccbRecalc(){
     // the actual/proj marker can flip without a full row re-render, so patch it in place
     const tag=document.getElementById('ccbtag_'+c.id);
     if(tag){const act=balanceIsActual(c,selIdx);tag.textContent=act?'actual':'proj';tag.classList.toggle('act',act);}
-    totB+=bal; totI+=i; totP+=cardPayFor(c,selIdx);
+    totB+=bal; totI+=i; totP+=cardCashPay(c,selIdx);
   });
   updateCardPayHeader();
   document.getElementById('ccBalTot').innerHTML=`${fmt(totB)} balance ${mLab} · ${fmt(totI)}/mo interest · ${fmt(totP)}/mo paid`;
@@ -1559,18 +1980,18 @@ function ccbRecalc(){
     const target=ranked[0];
     const lines=ranked.map(c=>{
       const chg=cardChargesFor(c,Math.max(selIdx,curIdx())+1); // ongoing monthly spend
-      const po=payoffOf(bals[c.id],Number(c.apr),Number(c.payment),chg);
+      const po=payoffPlan(c,selIdx,chg);
       let t;
       if(po.state==='nopay')t=`set a payment`;
       else if(po.state==='under')t=chg>0
         ?`<span style="color:var(--card)">underwater</span> — ${fmt0(c.payment)}/mo less ${fmt0(chg)}/mo new charges leaves ${fmt0(po.net)} against ${fmt0(po.interest)}/mo interest, balance grows`
         :`<span style="color:var(--card)">underwater</span> — ${fmt0(c.payment)}/mo < ${fmt0(po.interest)}/mo interest, balance grows`;
-      else t=`paid off ~<strong>${po.n}mo</strong>, ~${fmt0(po.paid)} interest${chg>0?` (after ${fmt0(chg)}/mo new charges)`:''}`;
-      return `<div style="margin:2px 0">• <strong>${esc(c.name)}</strong> — ${fmt0(bals[c.id])} at ${(Number(c.apr)||0).toFixed(2)}%, ${fmt0(c.payment)}/mo → ${t}</div>`;
+      else t=`paid off <strong>${MON[idxToYM(po.v).m]} ${idxToYM(po.v).y}</strong> (${po.n}mo), ~${fmt0(po.paid)} interest${chg>0?` (after ${fmt0(chg)}/mo new charges)`:''}`;
+      return `<div style="margin:2px 0">• <strong>${esc(c.name)}</strong> — ${fmt0(bals[c.id])} at ${(Number(c.apr)||0).toFixed(2)}%, ${fmt0(cardCashPay(c,selIdx))} in ${mLab} → ${t}</div>`;
     }).join('');
     const strat=payoffStrategy==='snowball'
-      ?`<div style="margin-top:8px"><strong>Snowball:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${fmt0(bals[target.id])} — your smallest balance, for a quick win). Clear it, then roll its payment onto the next-smallest balance.</div>`
-      :`<div style="margin-top:8px"><strong>Avalanche:</strong> pay the minimum on every card and throw every spare dollar at <strong>${esc(target.name)}</strong> (${(Number(target.apr)||0).toFixed(2)}% — your most expensive). Clear it, then roll its payment onto the next-highest APR.</div>`;
+      ?`<div style="margin-top:8px"><strong>Snowball:</strong> keep paying the others as scheduled and put every spare dollar toward <strong>${esc(target.name)}</strong> (${fmt0(bals[target.id])} — your smallest balance, for a quick win). Clear it, then roll its payment onto the next-smallest balance.</div>`
+      :`<div style="margin-top:8px"><strong>Avalanche:</strong> keep paying the others as scheduled and put every spare dollar toward <strong>${esc(target.name)}</strong> (${(Number(target.apr)||0).toFixed(2)}% — your most expensive). Clear it, then roll its payment onto the next-highest APR.</div>`;
     const chgCard=S.ccBalances.find(c=>c.id===S.chargeCardId);
     const note=charging>0?`<div style="margin-top:6px;color:var(--mute)">You're charging about ${fmt0(charging)}/mo in recurring plans + charges — ${chgCard
       ?`added back onto <strong>${esc(chgCard.name)}</strong> each month in the projections above.`
@@ -1578,10 +1999,11 @@ function ccbRecalc(){
     html=`<div style="margin-bottom:6px">${fmt0(totB)} total as of ${mLab} at ${fmt0(totI)}/mo interest:</div>${lines}${strat}${note}`;
   }
   document.getElementById('ccBalSummary').innerHTML=html;
+  renderPlanOut();renderWhatIf();
 }
 let payoffStrategy='avalanche'; // in-memory preference (like view/half) — resets to avalanche on reload
 window.setPayoffStrategy=(s)=>{
-  payoffStrategy=s;
+  payoffStrategy=s;S.payoffStrategy=s;save();
   const a=document.getElementById('stratAvalanche'),b=document.getElementById('stratSnowball');
   if(a)a.classList.toggle('active',s==='avalanche');
   if(b)b.classList.toggle('active',s==='snowball');
@@ -1594,9 +2016,10 @@ window.setChargeCard=(id)=>{
 let ccbT;
 window.ccbInput=(id,field,val)=>{
   const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
-  c[field]=field==='name'?val:(Number(val)||0);
+  if(field==='dueDay'){const d=Math.floor(Number(val));c.dueDay=(d>=1&&d<=31)?d:null;}
+  else c[field]=field==='name'?val:(Number(val)||0);
   ccbRecalc();
-  if(field==='payment'){renderCards();renderProjection();}
+  if(field!=='name'&&field!=='dueDay'){renderCards();renderProjection();}
   clearTimeout(ccbT);ccbT=setTimeout(save,400);
 };
 window.ccbBalInput=(id,val)=>{
@@ -1605,7 +2028,7 @@ window.ccbBalInput=(id,val)=>{
   if(!c.balanceMonths)c.balanceMonths={};
   if(String(val).trim()==='')delete c.balanceMonths[key];else c.balanceMonths[key]=Number(val)||0;
   c.balance=balanceFor(c,curIdx()); // keep the legacy field meaning "balance as of today"
-  ccbRecalc();
+  ccbRecalc();renderCards();renderProjection();
   clearTimeout(ccbT);ccbT=setTimeout(save,400);
 };
 window.ccbMonthInput=(id,val)=>{
@@ -1638,7 +2061,7 @@ function sectionHTML(sect){
   // to this month, so it only clutters the list. Hide it behind a count you can expand.
   const isDone=it=>evalItem(it,sect,selIdx).status==='done';
   const doneN=S[sect].filter(isDone).length, showDone=!!doneOpen[sect];
-  const doneTxt=doneN?` · <span class="lnkd" onclick="toggleDone('${sect}')" title="${showDone?'Hide':'Show'} items that already finished">${doneN} logged${showDone?' — hide':''}</span>`:'';
+  const doneTxt=doneN?` · <span class="lnkd" onclick="toggleDone('${sect}')" title="${showDone?'Hide':'Show'} items that already finished">${doneN} finished${showDone?' — hide':''}</span>`:'';
   const listed=showDone?[...S[sect]]:S[sect].filter(it=>!isDone(it));
   const rows=listed.sort((a,b)=>{
     const da=dayOf(a,sect,selIdx),db=dayOf(b,sect,selIdx);
@@ -1653,7 +2076,9 @@ function sectionHTML(sect){
     ?`<th>Item</th><th>Next payment</th><th>Payments left</th><th class="amt">${m} due $</th><th style="width:60px"></th>`
     :sect==='oneoff'
     ?`<th>Item</th><th>Date</th><th>Status</th><th class="amt">Amount</th><th style="width:60px"></th>`
-    :`<th>Item</th><th>Next date</th><th>Payments left</th><th class="amt">Monthly $</th><th style="width:60px"></th>`;
+    :sect==='card'
+    ?`<th>Item</th><th>Date</th><th>Type</th><th class="amt">Amount</th><th style="width:60px"></th>`
+    :`<th>Item</th><th>Next payment</th><th>Payments left</th><th class="amt">Monthly $</th><th style="width:60px"></th>`;
   return `<div class="section panel">
     <div class="sechead"><div class="tt"><span class="pd" style="background:${cfg.color}"></span>${cfg.title}</div><div class="sectot">${fmt(tot)} / mo · ${m}${pausedTxt}${doneTxt}</div></div>
     <table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>
@@ -1675,15 +2100,17 @@ function rowHTML(sect,it){
   if(editing.sect===sect&&editing.id===it.id)return editRowHTML(sect,it);
   const ev=evalItem(it,sect,selIdx);
   const off=it.on===false;
-  const cls=off?'done':ev.status==='done'?'done':ev.status==='pending'?'pending':'';
+  const cls=off?'done':(ev.status==='done'||ev.status==='skipped')?'done':ev.status==='pending'?'pending':'';
   if(sect==='recurring'){
     const badge=it.variable?'<span class="tag var">varies</span>':'';
     const offbadge=off?'<span class="tag">paused</span>':'';
     const startTxt=(it.start&&ev.status==='pending')?(()=>{const s=monthStartIdx(it.start);const ym=idxToYM(s);return `<span class="tag" style="color:var(--gold);border-color:rgba(224,166,78,.4)">starts ${MON[ym.m]} '${String(ym.y).slice(2)}</span>`;})():'';
-    const amtTxt=off?'<span style="color:var(--faint)">'+fmt(it.variable?(it.amount||0):it.amount)+'</span>'
-      :ev.status==='pending'?'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>'
-      :fmt(ev.amt)+(ev.est?' <span class="estmark">est</span>':'');
-    return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${badge}${startTxt}${offbadge}</td><td class="mono" style="color:var(--mute)">${it.day?'day '+it.day:'—'}</td><td style="color:var(--mute);font-size:12px">${it.variable?'Varies':'Fixed'}</td><td class="amt">${amtTxt}</td>${actions(sect,it)}</tr>`;
+    const amtTxt=off?'<span style="color:var(--faint)">'+fmt(amountAt(it,billVi(it,selIdx)))+'</span>'
+      :(ev.status==='pending'||ev.status==='skipped')?'<span style="color:var(--faint)">'+fmt(amountAt(it,billVi(it,selIdx)))+'</span>'
+      :fmt(ev.amt)+(ev.est?' <span class="estmark">est</span>':'')+(ev.spent?' <span class="estmark">'+fmt0(ev.spent)+' logged</span>':'');
+    const adj=it.monthAdj&&it.monthAdj[ymKey(billVi(it,selIdx))], shownDay=dayOf(it,sect,selIdx), paidTag=it.paidEarly?'<span class="tag">paid ahead</span>':'';
+    const adjTag=adj?`<span class="tag" style="color:var(--gold);border-color:rgba(224,166,78,.4)">${adj.skip?'skipped':'moved'}</span>`:'';
+    return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${badge}${startTxt}${adjTag}${paidTag}${offbadge}</td><td class="mono" style="color:var(--mute)">${shownDay?'day '+shownDay:'—'}</td><td style="color:var(--mute);font-size:12px">${it.variable?'Varies':'Fixed'}</td><td class="amt">${amtTxt}</td>${actions(sect,it)}</tr>`;
   }
   const offbadge=off?'<span class="tag">paused</span>':'';
   if(sect==='payin4'){
@@ -1700,9 +2127,9 @@ function rowHTML(sect,it){
   }
   if(sect==='card'){
     const once=(it.kind==='once')||(it.kind==null&&Number(it.left)===1);
-    const dateTxt=it.date?fmtDate(it.date):'—';
+    const dateTxt=once?(it.date?fmtDate(it.date):'—'):(nextDue(it)||'—');
     const midCol=off?'<span class="leftpill">paused</span>'
-      :once?(ev.status==='done'?'<span class="leftpill">logged</span>':ev.status==='pending'?'<span class="leftpill">'+fmtDate(it.date)+'</span>':'<span class="leftpill">one-time</span>')
+      :once?(ev.status==='done'?'<span class="leftpill">finished</span>':ev.status==='pending'?'<span class="leftpill">'+fmtDate(it.date)+'</span>':'<span class="leftpill">one-time</span>')
       :'<span class="leftpill">recurring</span>';
     const amtCell=(ev.status==='on'&&!off)?fmt(it.amount):'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>';
     return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${offbadge}</td><td class="mono" style="color:var(--mute)">${dateTxt}</td><td>${midCol}</td><td class="amt">${amtCell}</td>${actions(sect,it)}</tr>`;
@@ -1710,14 +2137,14 @@ function rowHTML(sect,it){
   if(sect==='oneoff'){
     const dateTxt=it.date?fmtDate(it.date):'—';
     const midCol=off?'<span class="leftpill">paused</span>'
-      :ev.status==='done'?'<span class="leftpill">logged</span>'
+      :ev.status==='done'?'<span class="leftpill">finished</span>'
       :ev.status==='pending'?'<span class="leftpill">'+(it.date?fmtDate(it.date):'upcoming')+'</span>'
       :'<span class="leftpill">this month</span>';
     const amtCell=(ev.status==='on'&&!off)?fmt(it.amount):'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>';
     return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${offbadge}</td><td class="mono" style="color:var(--mute)">${dateTxt}</td><td>${midCol}</td><td class="amt">${amtCell}</td>${actions(sect,it)}</tr>`;
   }
   const leftTxt=off?'<span class="leftpill">paused</span>':(it.left===''||it.left==null)?'<span class="leftpill">ongoing</span>':ev.status==='done'?'<span class="leftpill">paid off</span>':ev.status==='pending'?'<span class="leftpill">starts '+fmtDate(it.date)+'</span>':'<span class="leftpill">'+ev.leftAt+' left</span>';
-  return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${offbadge}</td><td class="mono" style="color:var(--mute)">${it.date?fmtDate(it.date):'—'}</td><td>${leftTxt}</td><td class="amt">${(ev.status==='on'&&!off)?fmt(it.amount):'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>'}</td>${actions(sect,it)}</tr>`;
+  return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${offbadge}</td><td class="mono" style="color:var(--mute)">${off?'—':(nextDue(it)||'—')}</td><td>${leftTxt}</td><td class="amt">${(ev.status==='on'&&!off)?fmt(it.amount):'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>'}</td>${actions(sect,it)}</tr>`;
 }
 function actions(sect,it){
   const off=it.on===false;
@@ -1730,12 +2157,14 @@ function editRowHTML(sect,it){
   const nameI=`<td class="editcell"><input id="ed_name" value="${esc(it.name)}"></td>`;
   if(sect==='recurring'){
     const varies=editTypeTmp!=null?editTypeTmp==='varies':it.variable;
-    const m=MON[idxToYM(selIdx).m],key=ymKey(selIdx);
+    const m=MON[idxToYM(selIdx).m],key=ymKey(billVi(it,selIdx)),adj=it.monthAdj&&it.monthAdj[key];
     const typeSel=`<td class="editcell"><select id="ed_type" onchange="setEditType(this.value)"><option value="fixed" ${!varies?'selected':''}>Fixed</option><option value="varies" ${varies?'selected':''}>Varies</option></select></td>`;
     const amtCell=varies
-      ?`<td class="editcell"><div style="display:flex;gap:5px"><input id="ed_est" class="mono" type="number" value="${it.amount||''}" placeholder="est/mo" title="estimate"><input id="ed_actual" class="mono" type="number" value="${(it.months&&it.months[key]!=null)?it.months[key]:''}" placeholder="${m} actual" title="actual for ${m}"></div></td>`
-      :`<td class="editcell"><input id="ed_amt" class="mono" type="number" value="${it.amount||''}"></td>`;
-    return `<tr>${nameI}<td class="editcell"><input id="ed_day" type="number" min="1" max="31" value="${it.day||''}"></td>${typeSel}${amtCell}${act}</tr>`;
+      ?`<td class="editcell"><div style="display:flex;gap:5px"><input id="ed_est" class="mono" type="number" value="${amountAt(it,billVi(it,selIdx))||''}" placeholder="est/mo" title="estimate"><input id="ed_actual" class="mono" type="number" value="${(it.months&&it.months[key]!=null)?it.months[key]:''}" placeholder="${m} actual" title="actual for ${m}"></div></td>`
+      :`<td class="editcell"><input id="ed_amt" class="mono" type="number" value="${amountAt(it,billVi(it,selIdx))||''}"></td>`;
+    return `<tr>${nameI}<td class="editcell"><input id="ed_day" type="number" min="1" max="31" value="${it.day||''}"></td>${typeSel}${amtCell}${act}</tr>
+      <tr><td colspan="5" class="editcell"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--mute)"><select id="ed_adj" style="width:auto" onchange="document.getElementById('ed_adjday').disabled=this.value!=='move'"><option value="" ${!adj?'selected':''}>Normal</option><option value="skip" ${adj&&adj.skip?'selected':''}>Skip</option><option value="move" ${adj&&adj.day?'selected':''}>Moved to day</option></select><input id="ed_adjday" class="mono" type="number" min="1" max="31" style="width:70px" placeholder="day" value="${adj&&adj.day?adj.day:''}" ${adj&&adj.day?'':'disabled'}><label style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;cursor:pointer"><input id="ed_early" type="checkbox" style="width:auto;accent-color:var(--gold)" ${it.paidEarly?'checked':''}>Paid from the previous month's last paycheck</label></div>
+      <div class="edrow2"><label>Amount change applies<select id="ed_scope" style="width:auto"><option value="from" selected>from ${MON[idxToYM(billVi(it,selIdx)).m]} ${idxToYM(billVi(it,selIdx)).y} on</option><option value="all">to every month</option></select></label><label>Last month<input id="ed_end" type="month" style="width:auto" value="${it.end||''}" title="Leave blank if it doesn't end"></label></div></td></tr>`;
   }
   if(sect==='payin4'){
     const every=Number(it.every)||7;
@@ -1766,6 +2195,16 @@ function addFormHTML(sect){
 }
 
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Next payment date (today or later) for something billed monthly from its start date.
+function nextDue(it){
+  const st=parseStart(it.date);if(st==null)return null;
+  const dd=Number(String(it.date).split('-')[2])||1,cur=curIdx(),today=dayNumToDate(todayNum()).d;
+  let v=Math.max(st,cur);
+  if(v===cur&&Math.min(dd,daysInMonth(v))<today)v++;
+  const hasLeft=it.left!==''&&it.left!=null&&!isNaN(Number(it.left));
+  if(hasLeft&&v>st+Number(it.left)-1)return null;
+  return MON[idxToYM(v).m]+' '+Math.min(dd,daysInMonth(v));
+}
 function fmtDate(d){const p=d.split('-');return MON[Number(p[1])-1]+' '+Number(p[2]);}
 
 window.selectMonth=vi=>{selIdx=vi;render();};
@@ -1780,8 +2219,8 @@ window.addItem=sect=>{
   let it={id:uid(),name,amount,on:true};
   if(sect==='recurring'){it.day=Number(document.getElementById('af_day').value)||null;it.variable=document.getElementById('af_type').value==='varies';it.months={};const st=document.getElementById('af_start');if(st&&st.value)it.start=st.value;}
   else if(sect==='payin4'){it.date=dateVal('af_date');it.every=Number(document.getElementById('af_p4freq').value)||7;it.count=4;}
-  else if(sect==='card'){const kind=document.getElementById('af_cardkind').value;const dv=dateVal('af_date');if(kind==='once'){it.kind='once';it.date=dv||new Date().toISOString().slice(0,10);it.left=1;}else{it.kind='recur';it.date=dv||'';it.left='';}}
-  else if(sect==='oneoff'){it.date=dateVal('af_date')||new Date().toISOString().slice(0,10);}
+  else if(sect==='card'){const kind=document.getElementById('af_cardkind').value;const dv=dateVal('af_date');if(kind==='once'){it.kind='once';it.date=dv||todayISO();it.left=1;}else{it.kind='recur';it.date=dv||'';it.left='';}}
+  else if(sect==='oneoff'){it.date=dateVal('af_date')||todayISO();}
   else{it.date=dateVal('af_date');const lv=document.getElementById('af_left').value;it.left=lv===''?(sect==='payin4'?4:''):Number(lv);}
   S[sect].push(it);addOpen[sect]=false;save();render();
 };
@@ -1793,14 +2232,24 @@ window.commitEdit=(sect,id)=>{
   it.name=document.getElementById('ed_name').value||it.name;
   if(sect==='recurring'){
     it.day=Number(document.getElementById('ed_day').value)||null;
+    if(!it.monthAdj)it.monthAdj={};
+    it.paidEarly=document.getElementById('ed_early').checked;
+    const scope=document.getElementById('ed_scope').value,bk=billVi(it,selIdx);
+    // "from this month on" records a change instead of rewriting past months
+    const setAmt=v=>{if(scope==='all'){it.amount=v;it.amountFrom={};}else if(Math.abs(v-amountAt(it,bk))>0.004){if(!it.amountFrom)it.amountFrom={};it.amountFrom[ymKey(bk)]=v;}};
+    {const ev_=document.getElementById('ed_end').value;if(/^\d{4}-\d{2}$/.test(ev_))it.end=ev_;else delete it.end;}
+    {const k=ymKey(billVi(it,selIdx)),mode=document.getElementById('ed_adj').value,ad=Math.floor(Number(document.getElementById('ed_adjday').value));
+     if(mode==='skip')it.monthAdj[k]={skip:true};
+     else if(mode==='move'&&ad>=1&&ad<=31)it.monthAdj[k]={day:ad};
+     else delete it.monthAdj[k];}
     const varies=editTypeTmp!=null?editTypeTmp==='varies':it.variable;
     it.variable=varies;
     if(varies){
-      it.amount=Number(document.getElementById('ed_est').value)||0;
+      setAmt(Number(document.getElementById('ed_est').value)||0);
       if(!it.months)it.months={};
-      const key=ymKey(selIdx),av=document.getElementById('ed_actual').value;
+      const key=ymKey(billVi(it,selIdx)),av=document.getElementById('ed_actual').value;
       if(av==='')delete it.months[key];else it.months[key]=Number(av)||0;
-    }else it.amount=Number(document.getElementById('ed_amt').value)||0;
+    }else setAmt(Number(document.getElementById('ed_amt').value)||0);
   }else if(sect==='payin4'){
     it.amount=Number(document.getElementById('ed_amt').value)||0;
     it.date=dateVal('ed_date');
@@ -1810,7 +2259,7 @@ window.commitEdit=(sect,id)=>{
     const kind=document.getElementById('ed_cardkind').value;
     it.amount=Number(document.getElementById('ed_amt').value)||0;
     const dv=dateVal('ed_date');
-    if(kind==='once'){it.kind='once';it.date=dv||new Date().toISOString().slice(0,10);it.left=1;}
+    if(kind==='once'){it.kind='once';it.date=dv||todayISO();it.left=1;}
     else{it.kind='recur';it.date=dv||'';it.left='';}
   }else if(sect==='oneoff'){
     it.amount=Number(document.getElementById('ed_amt').value)||0;
@@ -1841,6 +2290,13 @@ document.getElementById('incOvClear').onclick=()=>{
   document.getElementById('incOverride').value='';
   save();render();
 };
+document.getElementById('chkAmt').oninput=e=>{
+  const v=e.target.value.trim();
+  S.checking.amount=v===''||!isFinite(Number(v))?null:Number(v);
+  S.checking.date=todayISO();document.getElementById('chkDate').value=S.checking.date;
+  clearTimeout(inT);inT=setTimeout(()=>{save();},400);
+};
+document.getElementById('chkDate').onchange=e=>{if(/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)){S.checking.date=e.target.value;save();}};
 // Flexible date fields (class="datein") normalize to M/D/YY on blur; unparseable text gets a red border
 // instead of silently being dropped. focusout is used (not blur) since it bubbles for delegation.
 document.addEventListener('focusout',e=>{
@@ -1852,13 +2308,52 @@ document.addEventListener('focusout',e=>{
   if(iso){el.value=dispDate(iso);el.dataset.iso=iso;el.classList.remove('invalid');}
   else el.classList.add('invalid');
 });
-document.getElementById('exportBtn').onclick=()=>{const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='cashflow.json';a.click();};
+function doExport(){
+  S.lastExport=todayISO();
+  const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),url=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=url;a.download='cashflow-'+todayISO()+'.json';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  save();render();
+}
+window.doExport=doExport;
+document.getElementById('exportBtn').onclick=doExport;
 document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+const PREV_KEY=KEY+':before-import';
+let IMPORT_PENDING=null;
+function dataSummary(o){const n=k=>Array.isArray(o[k])?o[k].length:0;return `${n('recurring')} recurring bills · ${n('affirm')+n('ccplans')+n('payin4')} installment plans · ${n('oneoff')} one-time payments · ${n('card')} card charges · ${n('ccBalances')} cards`;}
 document.getElementById('importFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   const rd=new FileReader();
-  rd.onload=()=>{try{const obj=JSON.parse(rd.result);S=normalize(obj);document.getElementById('paycheck').value=S.paycheck||'';save();render();}catch(err){alert('Could not read that file — make sure it is a cashflow JSON export.');}};
+  rd.onload=()=>{
+    let obj=null;try{obj=JSON.parse(rd.result);}catch(err){}
+    const known=['recurring','affirm','payin4','ccplans','oneoff','card','ccBalances'];
+    if(!obj||typeof obj!=='object'||Array.isArray(obj)||!known.some(k=>Array.isArray(obj[k]))){
+      showModal(`<h2>That file can't be imported</h2><p class="ph">${esc(f.name)} isn't a cashflow backup, so nothing was changed.</p><div class="imp-foot"><span></span><button class="btn" onclick="closeModal()">OK</button></div>`);
+      return;
+    }
+    IMPORT_PENDING=obj;
+    showModal(`<h2>Replace your data with this backup?</h2>
+      <p class="ph"><strong>${esc(f.name)}</strong>${obj.lastExport?' · exported '+esc(String(obj.lastExport)):''}</p>
+      <div class="imp-grp"><span>In the backup</span></div><div class="note-block" style="margin-top:0">${dataSummary(obj)}</div>
+      <div class="imp-grp"><span>What's here now (will be replaced)</span></div><div class="note-block" style="margin-top:0">${dataSummary(S)}</div>
+      <p class="note-block">Your current data is kept, so you can undo this from Settings.</p>
+      <div class="imp-foot"><span></span><span style="display:flex;gap:8px"><button class="btn sm" onclick="closeModal()">Cancel</button><button class="btn" onclick="confirmImport()">Replace my data</button></span></div>`);
+  };
   rd.readAsText(f);e.target.value='';
+};
+window.confirmImport=async()=>{
+  if(!IMPORT_PENDING)return;
+  try{await store.set(PREV_KEY,JSON.stringify({at:todayISO(),data:S}));}catch(e){}
+  S=normalize(IMPORT_PENDING);IMPORT_PENDING=null;payoffStrategy=S.payoffStrategy;
+  closeModal();await save();render();
+};
+window.restorePrev=async()=>{
+  let p=null;try{const r=await store.get(PREV_KEY);p=r&&r.value?JSON.parse(r.value):null;}catch(e){}
+  if(!p||!p.data)return;
+  const cur=JSON.stringify({at:todayISO(),data:S});
+  S=normalize(p.data);payoffStrategy=S.payoffStrategy;
+  try{await store.set(PREV_KEY,cur);}catch(e){}
+  await save();render();
 };
 
 /* ---------- Chase statement import (CSV) ----------
@@ -1895,6 +2390,21 @@ function cleanDesc(raw){
   if(d.length>40)d=d.slice(0,40).trim();
   return d||'Imported payment';
 }
+// Where an imported purchase should go: the bill you picked for this merchant last time,
+// else a likely everyday bill by name, else One-time payments.
+const DEST_GUESS=[
+  [/sprouts|king soopers|safeway|whole ?foods|trader joe|grocer|natural grocers|aldi|kroger|costco|h-?e-?b|albertsons|market/i,/grocer/i],
+  [/shell|exxon|conoco|chevron|7-?eleven|sinclair|maverik|phillips 66|circle k|valero|bp\b|fuel|gas\b/i,/^gas|fuel/i],
+  [/restaurant|cafe|coffee|starbucks|\bbar\b|grill|pizza|taco|chipotle|doordash|uber ?eats|grubhub|brew|kitchen/i,/dining|discretionary|fun|eat/i],
+];
+function everydayBills(){return (S.recurring||[]).filter(it=>it.variable&&it.day==null);}
+function guessDest(name){
+  const m=S.merchantMap[name];
+  if(m==='oneoff')return 'oneoff';
+  if(m&&everydayBills().some(it=>it.id===m))return m;
+  for(const [re,bill] of DEST_GUESS){if(re.test(name)){const it=everydayBills().find(x=>bill.test(x.name));if(it)return it.id;}}
+  return 'oneoff';
+}
 function parseChaseCSV(text){
   const rows=csvParse(text);
   if(rows.length<2)return null;
@@ -1902,6 +2412,7 @@ function parseChaseCSV(text){
   const ix={det:hdr.indexOf('details'),date:hdr.indexOf('posting date'),desc:hdr.indexOf('description'),amt:hdr.indexOf('amount'),type:hdr.indexOf('type')};
   if(ix.date<0||ix.desc<0||ix.amt<0)return null;
   const existing=new Set((S.oneoff||[]).map(it=>(it.date||'')+'|'+(Number(it.amount)||0).toFixed(2)));
+  const lastDest={};
   const txns=[];let credits=0;
   for(let i=1;i<rows.length;i++){
     const r=rows[i];if(r.length<=Math.max(ix.date,ix.desc,ix.amt))continue;
@@ -1917,8 +2428,9 @@ function parseChaseCSV(text){
     let group='buy',why='';
     if(type==='LOAN_PMT'){group='skip';why='autopay — likely your Pay in 4 section';}
     else if(type==='ACH_DEBIT'){group='skip';why='autopay/bill — likely Recurring or Installments';}
-    const dup=existing.has(date+'|'+amount.toFixed(2));
-    txns.push({date,name:cleanDesc(r[ix.desc]),amount,group,why:dup?'possible duplicate — similar entry already in app':why,sel:group==='buy'&&!dup});
+    const name=cleanDesc(r[ix.desc]),key=date+'|'+amount.toFixed(2)+'|'+name;
+    const dup=existing.has(date+'|'+amount.toFixed(2))||!!S.imported[key];
+    txns.push({date,name,key,amount,group,dest:guessDest(name),why:dup?'already imported or a similar entry exists':why,sel:group==='buy'&&!dup});
   }
   txns.sort((a,b)=>a.group===b.group?(a.date<b.date?1:-1):(a.group==='buy'?-1:1));
   return {txns,credits};
@@ -1929,32 +2441,44 @@ function impRender(){
   if(!bg){bg=document.createElement('div');bg.className='modal-bg';bg.id='impModal';document.body.appendChild(bg);}
   const buys=IMP.txns.filter(t=>t.group==='buy'),skips=IMP.txns.filter(t=>t.group==='skip');
   const selected=IMP.txns.filter(t=>t.sel),sum=selected.reduce((s,t)=>s+t.amount,0);
-  const rowHTML=t=>{const i=IMP.txns.indexOf(t);return `<label class="imp-row${t.sel?'':' off'}"><input type="checkbox" ${t.sel?'checked':''} onchange="impToggle(${i})"><span class="d">${fmtDate(t.date)}</span><span class="n">${esc(t.name)}${t.why?` <span class="why">${esc(t.why)}</span>`:''}</span><span class="a">${fmt(t.amount)}</span></label>`;};
+  const bills=everydayBills();
+  const rowHTML=t=>{const i=IMP.txns.indexOf(t);
+    const sel=`<select onchange="impDest(${i},this.value)" title="Where this goes"><option value="oneoff"${t.dest==='oneoff'?' selected':''}>One-time payment</option>${bills.map(b=>`<option value="${b.id}"${t.dest===b.id?' selected':''}>${esc(b.name)}</option>`).join('')}</select>`;
+    return `<div class="imp-row${t.sel?'':' off'}"><input type="checkbox" ${t.sel?'checked':''} onchange="impToggle(${i})" aria-label="Import this row"><span class="d">${fmtDate(t.date)}</span><span class="n">${esc(t.name)}${t.why?` <span class="why">${esc(t.why)}</span>`:''}</span>${sel}<span class="a">${fmt(t.amount)}</span></div>`;};
   bg.innerHTML=`<div class="modal">
-    <h2>Import statement</h2>
-    <p class="ph">Checked rows are added to One-time payments — only date, name, and amount are kept. Nothing leaves this device.${IMP.credits?` ${IMP.credits} deposit/credit row${IMP.credits>1?'s':''} ignored.`:''}</p>
-    <div class="imp-grp"><span>Purchases (${buys.length})</span><span><button class="lnk" onclick="impSet('buy',true)">all</button>·<button class="lnk" onclick="impSet('buy',false)">none</button></span></div>
-    <div class="imp-list">${buys.map(rowHTML).join('')||'<div class="empty">No card purchases found.</div>'}</div>
-    ${skips.length?`<div class="imp-grp"><span>Skipped — likely tracked elsewhere (${skips.length})</span><span><button class="lnk" onclick="impSet('skip',true)">all</button>·<button class="lnk" onclick="impSet('skip',false)">none</button></span></div>
+    <h2>Import bank statement</h2>
+    <p class="ph">Pick where each purchase goes. Sending groceries, gas, or dining to that everyday bill counts it toward the month's spending instead of adding it on top of your estimate. Only the date, name, and amount are kept, and nothing leaves this device.${IMP.credits?` ${IMP.credits} deposit/credit row${IMP.credits>1?'s':''} ignored.`:''}</p>
+    <div class="imp-grp"><span>Purchases (${buys.length})</span><span><button class="lnk" onclick="impSet('buy',true)">all</button> · <button class="lnk" onclick="impSet('buy',false)">none</button></span></div>
+    <div class="imp-list">${buys.map(rowHTML).join('')||'<div class="empty">No purchases found.</div>'}</div>
+    ${skips.length?`<div class="imp-grp"><span>Skipped — likely tracked elsewhere (${skips.length})</span><span><button class="lnk" onclick="impSet('skip',true)">all</button> · <button class="lnk" onclick="impSet('skip',false)">none</button></span></div>
     <div class="imp-list">${skips.map(rowHTML).join('')}</div>`:''}
-    <div class="note-block">Heads-up: groceries, gas, and dining may already be covered by your variable Recurring estimates — importing those here too would double-count. You can delete the CSV after importing.</div>
+    <div class="note-block">The app remembers your choice for each merchant next time. You can delete the CSV after importing.</div>
     <div class="imp-foot"><span class="imp-sum">${selected.length} selected · ${fmt(sum)}</span><span style="display:flex;gap:8px"><button class="btn sm" onclick="impClose()">Cancel</button><button class="btn" onclick="impCommit()" ${selected.length?'':'disabled'}>Add selected</button></span></div>
   </div>`;
 }
 window.impToggle=i=>{IMP.txns[i].sel=!IMP.txns[i].sel;impRender();};
+window.impDest=(i,v)=>{IMP.txns[i].dest=v;};
 window.impSet=(g,v)=>{IMP.txns.forEach(t=>{if(t.group===g)t.sel=v;});impRender();};
 window.impClose=()=>{IMP=null;const m=document.getElementById('impModal');if(m)m.remove();};
 window.impCommit=()=>{
-  IMP.txns.filter(t=>t.sel).forEach(t=>S.oneoff.push({id:uid(),name:t.name,amount:t.amount,date:t.date,on:true,src:'chase'}));
+  IMP.txns.filter(t=>t.sel).forEach(t=>{
+    const it=t.dest!=='oneoff'&&S.recurring.find(x=>x.id===t.dest);
+    if(it){const k=t.date.slice(0,7);it.spent[k]=Math.round(((Number(it.spent[k])||0)+t.amount)*100)/100;}
+    else S.oneoff.push({id:uid(),name:t.name,amount:t.amount,date:t.date,on:true,src:'chase'});
+    S.merchantMap[t.name]=it?it.id:'oneoff';
+    S.imported[t.key]=todayISO();
+  });
   impClose();save();render();
 };
 document.getElementById('stmtBtn').onclick=()=>document.getElementById('stmtFile').click();
 document.getElementById('stmtFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   const rd=new FileReader();
-  rd.onload=()=>{const res=parseChaseCSV(rd.result);if(!res||!res.txns.length){alert('Could not find transactions — make sure this is a Chase account-activity CSV download.');return;}IMP=res;impRender();};
+  rd.onload=()=>{const res=parseChaseCSV(rd.result);if(!res||!res.txns.length){showModal('<h2>No transactions found</h2><p class="ph">Make sure this is a Chase account-activity CSV download. Nothing was changed.</p><div class="imp-foot"><span></span><button class="btn" onclick="closeModal()">OK</button></div>');return;}IMP=res;impRender();};
   rd.readAsText(f);e.target.value='';
 };
 
+// Offline support once it's hosted (service workers need https).
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 load();
 </script>
