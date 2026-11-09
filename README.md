@@ -21,22 +21,25 @@ Fragmented autopay dates across many creditors make the cumulative monthly outfl
 
 ## Features
 
-- **Four expense ledgers** — recurring bills, fixed installments, credit-card installment plans, and recurring card charges. Installments decrement automatically and drop off the month after their final payment.
-- **Cash vs. credit separation** — money that leaves your checking (bills + ACH installments + your card payment) is tracked separately from spend that accrues to a card balance, so "remaining cash" reflects reality.
-- **12-month projection** — a stacked forecast with your take-home as a reference line and the remaining-cash gap shown per month. Click any month to inspect it.
-- **Variable bills** — categories like groceries, gas, and utilities carry an estimate for forecasting plus a per-month actual you log as bills land.
-- **Post-dated bills** — schedule a future obligation (e.g. a loan resuming in the fall) so it appears only from its start month.
-- **Payment calendar** — a day-by-day view of which bills hit on which dates, split into first-half / second-half of the month, with payday markers.
-- **Credit-card payoff** — enter each card's balance, APR, and payment; the app ranks them by APR (avalanche order), shows monthly interest cost, and projects payoff time and total interest per card.
-- **Toggle any item on/off** — model "what if I pause this" without deleting data.
-- **Export / Import JSON** — portable backup and the mechanism for moving data between devices.
+- **Home: safe to spend now.** Enter your checking balance and the app walks it forward day by day (paychecks in, bills out, everyday spending spread across the month) to show your lowest point ahead and what's safe to spend, plus everything due in the next 14 days.
+- **Five tabs:** Home, Calendar, Bills, Cards, Settings.
+- **Expense ledgers:** recurring bills, installment loans, Pay in 4, credit-card plans, one-time payments, and card charges. Installments end on their own after the last payment.
+- **Cash vs. credit separation:** what leaves checking (bills, installments, card payments) is tracked separately from spending that lands on a card balance.
+- **Paycheck coverage:** each paycheck covers the bills due until the next one, with checking carried over from earlier checks. Bills like rent can be marked as paid from the previous month's last paycheck.
+- **Paid checkmarks and quick logging:** tick bills as paid, and use **+ Log** for groceries, gas, a bill amount, or a one-off purchase.
+- **History-safe edits:** change a bill's amount from a given month on, set a last month, or skip or move one month's payment, without rewriting the past.
+- **Credit cards:** per-month balances and payments, due days on the calendar, payoff dates that follow your planned payments, payments that stop once a card is paid off, and a debt-free plan with a goal month and a card-spending limit.
+- **What-if payoff:** avalanche vs. snowball with paid-off payments rolled onto the next card, plus extra monthly payments.
+- **Bank statement import (Chase CSV):** send purchases to Groceries, Gas, etc. so they count toward that month instead of on top of the estimate. The app remembers each merchant and skips rows it has already imported.
+- **Backups:** dated exports, a reminder when it's been a while, a preview before an import replaces anything, and one-click undo of the last import.
+- **Works offline** once installed from the hosted site (Add to Home Screen on iPhone).
 
 ## Privacy & security model
 
 This is the point of the project, not an afterthought:
 
 - **No backend.** Nothing is transmitted anywhere. There is no server to breach.
-- **No third-party code.** No CDNs, no web fonts, no analytics, no trackers. The app makes zero outbound network requests and runs fully offline using your device's native fonts.
+- **No third-party code.** No CDNs, no web fonts, no analytics, no trackers. The app makes zero outbound network requests. When hosted, a small service worker (`sw.js`) caches the app so it opens offline.
 - **Data is local-only.** All state is stored in the browser's `localStorage`, scoped to the origin serving the app. The published code contains only sample data. It does not contain anyone's finances.
 - **No secrets.** The source holds no keys or credentials, so hosting it publicly leaks nothing.
 - **You own the data lifecycle.** Export to a JSON file you control; import to restore. Backups are yours to encrypt and store as you see fit.
@@ -45,7 +48,7 @@ This is the point of the project, not an afterthought:
 
 - **Same-origin storage on shared hosts.** `localStorage` is scoped by origin, not path. On GitHub Pages, every project under `username.github.io` shares one origin, so other pages you host there could read this app's storage. Host on a **dedicated custom domain** (or a separate account) to isolate it.
 - **Device security is the boundary.** The app has no passcode; anyone with your unlocked device can open it. Rely on full-disk encryption (FileVault) and device lock.
-- **Never commit real data.** Keep exported JSON out of the repository, see `.gitignore`. Committed data would be public and preserved in git history.
+- **Never commit real data.** Exported backups (`cashflow*.json`) and bank CSVs are listed in `.gitignore`. Committed data would be public and preserved in git history.
 - **Storage can be evicted.** Browsers may purge `localStorage` for idle sites. Keep periodic JSON exports as your authoritative backup.
 
 ## Getting started
@@ -78,9 +81,17 @@ Treat the exported JSON as both your backup and your sync mechanism.
 
 To use it on a phone while keeping everything local (no public hosting), serve `index.html` from your computer and reach it over a private mesh VPN (e.g. Tailscale), then **Add to Home Screen** in mobile Safari for an app-like icon. The app is never exposed to the public internet in this mode.
 
+## Tests
+
+The money math (payments, payoff, paycheck coverage, running balance, carry-forward income) has tests that run against the real code in `index.html`:
+
+```bash
+node --test tests/*.test.mjs
+```
+
 ## Tech
 
-- Single `index.html` — HTML, CSS, and vanilla JavaScript in one file
+- Single `index.html` — HTML, CSS, and vanilla JavaScript in one file, plus `sw.js`, `manifest.webmanifest`, and `icon.svg` for offline use
 - Hand-rolled SVG charts (no charting library)
 - `localStorage` persistence with JSON export/import
 - Native system fonts; no external resources

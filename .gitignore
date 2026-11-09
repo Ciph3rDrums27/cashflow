@@ -1,0 +1,15 @@
+# Terraform: providers, state (can contain resource details), and local variable values
+infra/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+tf-backup/
+
+# Personal data: exported backups and bank statements must never be committed
+cashflow*.json
+*.csv
+
+# Local clutter
+.DS_Store
+node_modules/
+*.code-workspace

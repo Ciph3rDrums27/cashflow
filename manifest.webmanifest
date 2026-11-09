@@ -1,0 +1,10 @@
+{
+  "name": "Cashflow Forecast",
+  "short_name": "Cashflow",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c0e1a",
+  "theme_color": "#0c0e1a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
