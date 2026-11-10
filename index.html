@@ -990,7 +990,6 @@ const SECT={
 };
 // The order the lists appear in on the Bills tab.
 const SECTKEYS=['affirm','payin4','ccplans','recurring','oneoff','card'];
-const STACK=[['recurring','var(--recur)'],['affirm','var(--affirm)'],['payin4','var(--pay4)'],['ccplans','var(--ccplan)'],['oneoff','var(--oneoff)'],['card','var(--card)']];
 // Month names, short and long.
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONL=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1189,8 +1188,6 @@ function normalize(s){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(s.payAnchor||'')))s.payAnchor=DEFAULT_PAY_ANCHOR;
   s.payEvery=Math.max(1,Number(s.payEvery)||14);
   if(!s.incomeMonths||typeof s.incomeMonths!=='object')s.incomeMonths={};
-  s.cardPayment=Number(s.cardPayment)||0;
-  if(!s.cardPayMonths||typeof s.cardPayMonths!=='object')s.cardPayMonths={};
   const safeId=v=>/^[A-Za-z0-9_-]{1,40}$/.test(String(v==null?'':v));
   SECTKEYS.forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];s[k]=s[k].filter(it=>it&&typeof it==='object');s[k].forEach(it=>{
     if(!safeId(it.id))it.id=uid();if(it.on===undefined)it.on=true;
@@ -1356,7 +1353,6 @@ function balanceFor(c,vi){return balanceBreakdown(c,vi).bal;}
 function balanceAfterPay(c,vi){return Math.max(0,balanceFor(c,vi)-cardPayFor(c,vi));}
 // Total cash going to all cards in a month.
 function cardPaymentTotal(vi){return (S.ccBalances||[]).reduce((s,c)=>s+cardCashPay(c,vi),0);}
-function updateCardPayHeader(){const el=document.getElementById('cardpayTot');if(el)el.textContent=fmt0(cardPaymentTotal(selIdx));}
 // ========== SAVING AND MESSAGES ==========
 // Saves S to the browser and shows a warning banner if it can't. "silent" skips the brief
 // "saved" flash.
@@ -1467,8 +1463,6 @@ function evalItem(it,sect,vi){
 }
 // Total for one list in a month.
 function sectionSum(sect,vi){return S[sect].reduce((s,it)=>s+evalItem(it,sect,vi).amt,0);}
-// Total of all six lists in a month (cash and card together).
-function monthTotal(vi){return SECTKEYS.reduce((s,k)=>s+sectionSum(k,vi),0);}
 
 // Cash that leaves checking in a month.
 function cashOut(vi){return sectionSum('recurring',vi)+sectionSum('affirm',vi)+sectionSum('payin4',vi)+sectionSum('oneoff',vi)+cardPaymentTotal(vi);}
@@ -1552,7 +1546,7 @@ function dayOf(it,sect,vi){
 // Home, the Calendar and the checking projection all read from this list.
 function calItems(vi){
   if(vi==null)vi=selIdx;
-  const out=[],{y,m}=idxToYM(vi),last=daysInMonth(vi),ym=ymKey(vi);
+  const out=[],{y,m}=idxToYM(vi),last=daysInMonth(vi);
   // A due day past the end of a short month lands on that month's last day.
   const clampDay=d=>d==null?null:Math.min(d,last);
   // Calendar and paycheck coverage follow cash: card spending stays out, and what
@@ -1560,12 +1554,12 @@ function calItems(vi){
   SECTKEYS.filter(sect=>sect!=='ccplans'&&sect!=='card').forEach(sect=>{(S[sect]||[]).forEach(it=>{
     if(it.on===false)return;
     if(SECT[sect].mode==='payin4'){
-      payin4Dates(it).forEach(dt=>{if(dt.getFullYear()===y&&dt.getMonth()===m)out.push({sect,id:it.id,key:sect+':'+it.id+':'+ym+':'+dt.getDate(),name:it.name,amount:Number(it.amount)||0,day:dt.getDate(),variable:false,est:false});});
+      payin4Dates(it).forEach(dt=>{if(dt.getFullYear()===y&&dt.getMonth()===m)out.push({sect,id:it.id,name:it.name,amount:Number(it.amount)||0,day:dt.getDate(),variable:false,est:false});});
       return;
     }
     const ev=evalItem(it,sect,vi);
     if(ev.status!=='on'||ev.amt<=0)return;
-    const base={sect,id:it.id,key:sect+':'+it.id+':'+ym,amount:ev.amt,variable:!!it.variable,est:!!ev.est,spent:ev.spent||0};
+    const base={sect,id:it.id,amount:ev.amt,variable:!!it.variable,est:!!ev.est,spent:ev.spent||0};
     if(sect==='recurring'&&it.paidEarly){
       const pays=paydaysIn(vi),due=dayOf(it,sect,vi),nm=MON[idxToYM(vi+1).m],dd=due==null?null:Math.min(due,daysInMonth(vi+1));
       out.push(Object.assign(base,{name:it.name+(dd?` (${nm} ${dd})`:` (${nm})`),day:pays.length?pays[pays.length-1]:clampDay(due)}));
@@ -1575,7 +1569,7 @@ function calItems(vi){
   });});
   (S.ccBalances||[]).forEach(c=>{
     const amt=cardCashPay(c,vi);
-    if(amt>0)out.push({sect:'cardpay',id:c.id,key:'cardpay:'+c.id+':'+ym,name:c.name+' payment',amount:amt,day:clampDay(c.dueDay),variable:false,est:false});
+    if(amt>0)out.push({sect:'cardpay',id:c.id,name:c.name+' payment',amount:amt,day:clampDay(c.dueDay),variable:false,est:false});
   });
   return out;
 }
@@ -1587,7 +1581,7 @@ function paycheckPeriods(vi){
   const pool=[];
   [vi,vi+1].forEach(v=>{
     const ym=idxToYM(v);
-    calItems(v).forEach(i=>{if(i.day!=null)pool.push({sect:i.sect,key:i.key,name:i.name,amount:i.amount,est:i.est,day:i.day,vi:v,n:dayNum(ym.y,ym.m,i.day)});});
+    calItems(v).forEach(i=>{if(i.day!=null)pool.push({sect:i.sect,name:i.name,amount:i.amount,est:i.est,day:i.day,vi:v,n:dayNum(ym.y,ym.m,i.day)});});
   });
   return paydaysIn(vi).map(d=>{
     const start=dayNum(y,m,d),end=start+e;
@@ -1735,7 +1729,7 @@ function renderCalendar(){
   document.getElementById('tlTitle').textContent='Outflow timeline · '+ml;
   document.getElementById('listTitle').textContent='Day by day · '+ml;
   const days=[...new Set(dated.map(i=>i.day))];
-  document.getElementById('listSub').textContent=days.length?`${fmt(sum(dated))} across ${days.length} days · tap ✓ when something's paid`:'No dated bills this month.';
+  document.getElementById('listSub').textContent=days.length?`${fmt(sum(dated))} across ${days.length} days`:'No dated bills this month.';
   let html='';
   [...new Set([...days,...pays,...(tday?[tday]:[])])].sort((a,b)=>a-b).forEach(dd=>{
     const isPay=pays.includes(dd),its=dated.filter(i=>i.day===dd).sort((a,b)=>b.amount-a.amount),isT=dd===tday;
@@ -2068,7 +2062,6 @@ function ccbRecalc(){
     if(tag){const act=balanceIsActual(c,selIdx);tag.textContent=act?'actual':'proj';tag.classList.toggle('act',act);}
     totB+=bal; totI+=i; totP+=cardCashPay(c,selIdx);
   });
-  updateCardPayHeader();
   document.getElementById('ccBalTot').innerHTML=`${fmt(totB)} balance ${mLab} · ${fmt(totI)}/mo interest · ${fmt(totP)}/mo paid`;
   // the ongoing spend the projections actually apply - a future month, so past one-off
   // purchases already sitting in your balance don't inflate it
