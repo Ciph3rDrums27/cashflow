@@ -933,6 +933,53 @@
 </div>
 
 <script>
+// =====================================================================
+// HOW THIS APP WORKS (read this first)
+//
+// Everything you enter is kept in one object called S and saved in this
+// browser. Nothing is sent to a server.
+//
+// The page is redrawn from S every time something changes:
+//   you type or click -> S is updated -> save() -> render()
+//
+// Three ideas run through the whole file:
+//  1. Months are numbered. "vi" is a month index = year*12 + month, with
+//     January = 0 (so December 2026 = 2026*12 + 11). Adding 1 moves to
+//     the next month. curIdx() is this month; selIdx is the month picked
+//     with the arrows at the top of the page.
+//  2. Days are numbered too. A "day number" counts days since 1970, so
+//     two dates can be compared or subtracted as plain numbers.
+//  3. Cash and card are kept apart. Bills, loans, Pay in 4, one-time
+//     payments and card PAYMENTS leave checking ("cash out"). Card
+//     CHARGES and card plans add to a card balance instead.
+//
+// What S holds:
+//   paycheck, payAnchor, payEvery - pay amount, a known payday, days between paydays
+//   incomeMonths  - take-home you typed for specific months
+//   recurring     - monthly bills and everyday budgets (Groceries, Gas)
+//   affirm        - installment loans
+//   payin4        - Pay in 4 plans
+//   oneoff        - one-time payments from checking
+//   ccplans, card - card installment plans and card charges
+//   ccBalances    - each credit card: balances, APR, payments, due day
+//   chargeCardId  - the card new spending lands on
+//   payoffStrategy - which card to pay first (avalanche or snowball)
+//   checking      - checking balance and the date you entered it
+//   merchantMap, imported - what the statement import remembers
+//   lastExport    - date of your last backup
+//
+// Order of the file: settings and sample data, dates and pay, loading and
+// saving, card maths, bill maths, then one block per screen (Home,
+// Calendar, summary and charts, Cards, Bills), then backup and import.
+// =====================================================================
+
+// ========== SETTINGS AND LABELS ==========
+// The six lists of things that cost money. "mode" says how each one behaves over time:
+//   installment - a monthly amount with a number of payments left
+//   payin4      - a few payments, a week or two apart
+//   recurring   - every month, on a set day or with no fixed day
+//   oncecash    - once, in the month of its date
+//   mixed       - card charges: either monthly or one-time
 const SECT={
   affirm:{title:'Installment loans',color:'var(--affirm)',raw:'var(--affirm)',mode:'installment'},
   payin4:{title:'Pay in 4',color:'var(--pay4)',raw:'var(--pay4)',mode:'payin4'},
@@ -941,18 +988,27 @@ const SECT={
   oneoff:{title:'One-time payments',color:'var(--oneoff)',raw:'var(--oneoff)',mode:'oncecash'},
   card:{title:'Credit-card charges',color:'var(--card)',raw:'var(--card)',mode:'mixed'},
 };
+// The order the lists appear in on the Bills tab.
 const SECTKEYS=['affirm','payin4','ccplans','recurring','oneoff','card'];
 const STACK=[['recurring','var(--recur)'],['affirm','var(--affirm)'],['payin4','var(--pay4)'],['ccplans','var(--ccplan)'],['oneoff','var(--oneoff)'],['card','var(--card)']];
+// Month names, short and long.
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+// Money as text. fmt gives $1,234.56; fmt0 rounds to whole dollars ($1,235).
 const fmt=n=>'$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmt0=n=>(n<0?'-':'')+'$'+Math.round(Math.abs(Number(n)||0)).toLocaleString('en-US');
+// The names your data is saved under in the browser. OLDKEY is an older format that is still
+// read once, to upgrade it.
 const KEY='cashflow:v3', OLDKEY='cashflow:v2';
+// Short label and dot color for each kind of item shown on Home and the Calendar.
 const META={affirm:{lab:'Installment',col:'var(--affirm)'},payin4:{lab:'Pay in 4',col:'var(--pay4)'},ccplans:{lab:'CC plan',col:'var(--ccplan)'},recurring:{lab:'Recurring',col:'var(--recur)'},oneoff:{lab:'One-time',col:'var(--oneoff)'},card:{lab:'Card',col:'var(--card)'},cardpay:{lab:'Card payment',col:'var(--ccplan)'}};
+// Turns 1 into "1st", 2 into "2nd", 23 into "23rd".
 function ord(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+// The tab currently showing, and the list of tabs.
 let view='home';
 const VIEWS=['home','calendar','bills','cards','settings'];
 
+// Sample data shown the first time the app is opened, before you enter your own.
 const SEED={
   paycheck:2769.23, payAnchor:'2026-09-04', payEvery:14,
   affirm:[
@@ -990,26 +1046,47 @@ const SEED={
     {name:'Card 2', balance:0,    apr:0,     payment:0},
   ],
 };
+// Bills added automatically when upgrading very old saved data (see migrateV2).
 const VAR_DEFAULTS=['Energy','Phone','Groceries','Gas'];
 
+// The app's working memory:
+//   S           - all of your data (see the top of the file)
+//   selIdx      - the month picked with the arrows
+//   editing     - which row is being edited on the Bills tab, if any
+//   editTypeTmp - the Fixed/Varies choice while that row is being edited
+//   addOpen     - which "add" forms are open
+//   doneOpen    - which lists are showing their finished items
 let S=null, selIdx=null, editing={sect:null,id:null}, editTypeTmp=null, addOpen={}, doneOpen={};
 
+// ========== MONTHS AND DATES ==========
+// Month index: year*12 + month, with January = 0. See the top of the file.
 const mi=(y,m)=>y*12+m;
+// This month's index.
 function curIdx(){const n=new Date();return mi(n.getFullYear(),n.getMonth());}
+// Month index back to a year and month.
 function idxToYM(i){return {y:Math.floor(i/12), m:i%12};}
+// Month index to text like "2026-11". This is the label used for anything stored per month.
 function ymKey(i){const {y,m}=idxToYM(i);return y+'-'+String(m+1).padStart(2,'0');}
+// A date like "2026-11-13" (or a month like "2026-11") to its month index.
 function parseStart(d){if(!d)return null;const p=d.split('-').map(Number);return mi(p[0],p[1]-1);}
+// A random short id for a new item.
 function uid(){return 'x'+Math.random().toString(36).slice(2,9);}
 
 // Pay schedule. Paydays repeat every payEvery days from payAnchor (a known payday),
 // so a month has 2 or 3 of them rather than fixed days-of-month. Day math runs in
 // whole UTC days to stay immune to DST shifts.
 const DEFAULT_PAY_ANCHOR='2026-09-04', DAYMS=86400000;
+// Day number for a date (days since 1970).
 function dayNum(y,m,d){return Math.round(Date.UTC(y,m,d)/DAYMS);}
+// Day number of the known payday you entered in Settings.
 function payAnchorNum(){const p=String(S.payAnchor||DEFAULT_PAY_ANCHOR).split('-').map(Number);return dayNum(p[0],(p[1]||1)-1,p[2]||1);}
+// Days between paydays (14 unless changed).
 function payEvery(){return Math.max(1,Number(S.payEvery)||14);}
+// True if that date is a payday: a whole number of pay periods away from the known payday.
 function isPayday(y,m,d){const e=payEvery();return (((dayNum(y,m,d)-payAnchorNum())%e)+e)%e===0;}
+// How many days that month has.
 function daysInMonth(vi){const {y,m}=idxToYM(vi);return new Date(Date.UTC(y,m+1,0)).getUTCDate();}
+// The days of that month that are paydays, e.g. [13, 27].
 function paydaysIn(vi){
   const {y,m}=idxToYM(vi),out=[],last=daysInMonth(vi);
   for(let d=1;d<=last;d++)if(isPayday(y,m,d))out.push(d);
@@ -1023,6 +1100,9 @@ function incomeFor(vi){
   if(ov!=null)return Number(ov);
   return carriedPerCheck(vi)*paydaysIn(vi).length;
 }
+// The per-paycheck amount to assume for a month you haven't entered: the latest earlier month
+// you did enter, divided by its number of paydays. If there is none, the paycheck amount from
+// Settings.
 function carriedPerCheck(vi){
   const keys=Object.keys(S.incomeMonths||{}).filter(k=>/^\d{4}-\d{2}$/.test(k)&&monthStartIdx(k)<vi).sort();
   for(let i=keys.length-1;i>=0;i--){const k=keys[i],n=paydaysIn(monthStartIdx(k)).length;if(n)return Number(S.incomeMonths[k])/n;}
@@ -1032,12 +1112,20 @@ function carriedPerCheck(vi){
 function paycheckFor(vi){const n=paydaysIn(vi).length;return n?incomeFor(vi)/n:carriedPerCheck(vi);}
 // Local calendar dates (not UTC, which flips to tomorrow in the evening).
 function todayISO(){const t=new Date();return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+// "2026-11-13" to a day number.
 function isoDayNum(iso){const p=String(iso).split('-').map(Number);return dayNum(p[0],(p[1]||1)-1,p[2]||1);}
+// Day number back to year, month and day.
 function dayNumToDate(n){const t=new Date(n*DAYMS);return {y:t.getUTCFullYear(),m:t.getUTCMonth(),d:t.getUTCDate()};}
+// Today's day number.
 function todayNum(){return isoDayNum(todayISO());}
+// Day number to text like "Nov 13".
 function fmtDay(n){const t=dayNumToDate(n);return MON[t.m]+' '+t.d;}
 
+// ========== READING DATES YOU TYPE ==========
+// Lower-case month names, for matching typed text like "jul 23".
 const MONA=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+// Builds "yyyy-mm-dd" from a month and day. If no year was typed it uses the year of the month
+// being viewed, or else whichever year puts the date within about six months of today.
 function buildISO(mo,day,yr,refVi){
   if(mo<1||mo>12||day<1||day>31)return null;
   const d=new Date(2000,mo-1,day);
@@ -1074,17 +1162,23 @@ function parseFlexDate(raw,refVi){
   if(m=raw.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/))return buildISO(Number(m[1]),Number(m[2]),m[3],refVi);
   return null;
 }
+// "2026-07-23" to "7/23/26", for showing in a date box.
 function dispDate(iso){
   if(!iso)return '';
   const p=iso.split('-').map(Number);
   return p[1]+'/'+p[2]+'/'+String(p[0]).slice(2);
 }
+// Reads a date box on the page and returns "yyyy-mm-dd" (or the last valid date the box held).
 function dateVal(id,refVi){
   const el=document.getElementById(id);if(!el)return '';
   const v=el.value.trim();if(!v)return '';
   return parseFlexDate(v,refVi)||el.dataset.iso||'';
 }
 
+// ========== LOADING AND CLEANING YOUR DATA ==========
+// Makes saved or imported data safe to use: fills in anything missing, turns text into numbers
+// where numbers are expected, replaces unsafe ids, and upgrades older formats. Everything
+// loaded or imported passes through here first.
 function normalize(s){
   if(!s||typeof s!=='object'||Array.isArray(s))s={};
   s.income=Number(s.income)||0;
@@ -1138,6 +1232,7 @@ function normalize(s){
   if(s.lastExport!=null&&!/^\d{4}-\d{2}-\d{2}$/.test(String(s.lastExport)))delete s.lastExport;
   return s;
 }
+// Upgrades data saved by an older version of the app.
 function migrateV2(s){ // v2 had no ccplans and possibly no variable fields
   s.ccplans=s.ccplans||[];
   const have=new Set((s.recurring||[]).map(x=>(x.name||'').toLowerCase()));
@@ -1146,7 +1241,9 @@ function migrateV2(s){ // v2 had no ccplans and possibly no variable fields
 }
 
 // Storage works both inside claude.ai (window.storage) and as a local desktop file (localStorage).
+// The browser's storage, or null if the browser won't allow it (some private windows).
 const LS=(()=>{try{if(typeof window!=='undefined'&&window.localStorage){window.localStorage.getItem('__probe');return window.localStorage;}}catch(e){}return null;})();
+// Reads and writes saved data by name.
 const store={
   async get(k){
     try{if(typeof window!=='undefined'&&window.storage&&window.storage.get)return await window.storage.get(k);}catch(e){}
@@ -1160,7 +1257,10 @@ const store={
   }
 };
 
+// A message to show after loading, if the saved data couldn't be read.
 let LOAD_NOTE='';
+// Runs once when the page opens: reads your saved data (or the older format, or the sample
+// data), cleans it, saves it back, and draws the tab you were last on.
 async function load(){
   let raw=null;S=null;
   try{const r=await store.get(KEY); if(r&&r.value){raw=r.value;S=JSON.parse(raw);}}catch(e){S=null;}
@@ -1186,6 +1286,9 @@ async function load(){
   setView(view);
   if(LOAD_NOTE){showBanner(LOAD_NOTE,'warn');LOAD_NOTE='';}
 }
+// ========== CREDIT CARD MATHS ==========
+// The payment planned for a card in a month: the amount typed for that month, otherwise the
+// card's normal payment.
 function cardPayFor(c,vi){
   const key=ymKey(vi);
   const ov=c.payMonths&&c.payMonths[key];
@@ -1198,17 +1301,22 @@ function cardCashPay(c,vi){
   if(ov!=null)return Number(ov);
   return Math.min(Number(c.payment)||0,balanceFor(c,vi));
 }
-// Card balance by month. A balance you type is an *actual* reading anchored to the month
-// you typed it in (same idiom as payMonths). Any later month is projected forward from the
-// most recent actual, one month at a time: + that month's interest - that month's payment.
-// Tracked charges (CC plans / card charges) aren't attributed to a specific card, so they
-// are not part of this per-card roll-forward.
+// Card balance by month. A balance you type is an *actual* reading tied to the month you
+// typed it in. Any later month is projected from the most recent actual, one month at a
+// time: take off that month's payment, add interest on what's left, then add new card
+// charges if this is the card your spending lands on.
+//
+// "2026-11" to a month index.
 function balKeyIdx(k){const p=k.split('-').map(Number);return mi(p[0],(p[1]||1)-1);}
+// The months this card has a typed balance for, oldest first.
 function balAnchors(c){return Object.keys(c.balanceMonths||{}).filter(k=>/^\d{4}-\d{2}$/.test(k)).sort();}
+// True if you typed this card's balance for that month (otherwise it is projected).
 function balanceIsActual(c,vi){return !!(c.balanceMonths&&c.balanceMonths[ymKey(vi)]!=null);}
 // Tracked spend that bills to a card in month vi: CC plans + card charges. This is the
 // app's own "accrues to card balance" grouping (the donut's On-credit-card total).
 function monthlyChargesFor(vi){return sectionSum('ccplans',vi)+sectionSum('card',vi);}
+// New charges added to this card's balance in a month. Only the card chosen under "new charges
+// land on" gets them, and only in months after this one.
 function cardChargesFor(c,vi){
   // Spending through the current month has already hit the balance you're reading off
   // your statement, so only months still ahead add new charges on top.
@@ -1242,11 +1350,16 @@ function balanceBreakdown(c,vi){
   out.bal=bal;
   return out;
 }
+// A card's balance at the start of a month, before that month's payment.
 function balanceFor(c,vi){return balanceBreakdown(c,vi).bal;}
 // What you still owe once this month's payment goes through - and what next month builds on.
 function balanceAfterPay(c,vi){return Math.max(0,balanceFor(c,vi)-cardPayFor(c,vi));}
+// Total cash going to all cards in a month.
 function cardPaymentTotal(vi){return (S.ccBalances||[]).reduce((s,c)=>s+cardCashPay(c,vi),0);}
 function updateCardPayHeader(){const el=document.getElementById('cardpayTot');if(el)el.textContent=fmt0(cardPaymentTotal(selIdx));}
+// ========== SAVING AND MESSAGES ==========
+// Saves S to the browser and shows a warning banner if it can't. "silent" skips the brief
+// "saved" flash.
 async function save(silent){
   try{
     const r=await store.set(KEY,JSON.stringify(S));
@@ -1254,14 +1367,22 @@ async function save(silent){
     if(!silent)flash();
   }catch(e){console.error(e);showBanner('Your last change could not be saved ('+esc(e.message||String(e))+'). Export a backup from Settings so nothing is lost.','warn');}
 }
+// Shows a message bar at the top of the page.
 function showBanner(html,kind){const b=document.getElementById('banner');if(!b)return;b.innerHTML='<span>'+html+'</span><button class="icon-btn" onclick="hideBanner()" aria-label="Dismiss">✕</button>';b.className='banner'+(kind?' '+kind:'');b.hidden=false;}
+// Hides it.
 window.hideBanner=()=>{const b=document.getElementById('banner');if(b)b.hidden=true;};
+// Opens a pop-up dialog with the given content. Clicking outside it closes it.
 function showModal(html){closeModal();const bg=document.createElement('div');bg.className='modal-bg';bg.id='appModal';bg.innerHTML='<div class="modal">'+html+'</div>';bg.addEventListener('click',e=>{if(e.target===bg)closeModal();});document.body.appendChild(bg);}
+// Closes the pop-up.
 function closeModal(){const m=document.getElementById('appModal');if(m)m.remove();}
 window.closeModal=closeModal;
+// Briefly shows the "saved" flag.
 function flash(){const f=document.getElementById('savedFlag');f.classList.add('show');setTimeout(()=>f.classList.remove('show'),1100);}
 
+// ========== WHAT EACH BILL COSTS IN A MONTH ==========
+// "2026-11" (or a full date) to a month index; null if empty.
 function monthStartIdx(s){if(!s)return null;const p=String(s).split('-').map(Number);return mi(p[0],(p[1]||1)-1);}
+// The dates of every payment in a Pay in 4 plan, counted from its first payment date.
 function payin4Dates(it){
   if(!it.date)return [];
   const p=it.date.split('-').map(Number);
@@ -1277,6 +1398,20 @@ function billVi(it,vi){return it.paidEarly?vi+1:vi;}
 // A recurring amount that changed: the latest change at or before month vi applies, so
 // raising rent next year doesn't rewrite what you paid before.
 function amountAt(it,vi){let a=Number(it.amount)||0;const ch=it.amountFrom||{};Object.keys(ch).filter(k=>/^\d{4}-\d{2}$/.test(k)&&monthStartIdx(k)<=vi).sort().forEach(k=>{a=Number(ch[k])||0;});return a;}
+// The core calculation. For one item and one month it answers: how much does this cost
+// that month, and what state is it in?
+//   amt    - dollars counted that month
+//   status - 'on' (counted), 'pending' (not started yet), 'done' (finished),
+//            'skipped' (skipped that month), 'off' (paused)
+//   est    - true when the amount is an estimate, not a figure you entered
+// The rules differ by kind of item:
+//   Pay in 4       - the amount times the number of its payments that fall in the month
+//   recurring bill - $0 before its start month, after its last month, or if skipped.
+//                    A bill that varies uses the amount typed for that month if there is
+//                    one; otherwise the estimate (see the note on logged spending below)
+//   one-time       - the full amount in the month of its date, $0 otherwise
+//   installments and card charges - the monthly amount from the start month, for as many
+//                    payments as are left; with no count, every month from the start
 function evalItem(it,sect,vi){
   if(it.on===false)return {amt:0,active:false,status:'off'};
   const mode=SECT[sect].mode;
@@ -1330,11 +1465,15 @@ function evalItem(it,sect,vi){
   if(vi<=start+left-1)return {amt,active:true,status:'on',leftAt:left-(vi-start)};
   return {amt:0,active:false,status:'done'};
 }
+// Total for one list in a month.
 function sectionSum(sect,vi){return S[sect].reduce((s,it)=>s+evalItem(it,sect,vi).amt,0);}
+// Total of all six lists in a month (cash and card together).
 function monthTotal(vi){return SECTKEYS.reduce((s,k)=>s+sectionSum(k,vi),0);}
 
 // Cash that leaves checking in a month.
 function cashOut(vi){return sectionSum('recurring',vi)+sectionSum('affirm',vi)+sectionSum('payin4',vi)+sectionSum('oneoff',vi)+cardPaymentTotal(vi);}
+// ========== DRAWING THE PAGE ==========
+// Redraws the header and whichever tab is showing. Called after every change.
 function render(){
   renderHeader();
   renderIncomeBox();
@@ -1344,6 +1483,7 @@ function render(){
   else if(view==='calendar')renderCalendar();
   else renderSettings();
 }
+// Fills in the Pay & income boxes in Settings for the month being viewed.
 function renderIncomeBox(){
   const key=ymKey(selIdx),{y,m}=idxToYM(selIdx);
   const has=S.incomeMonths&&S.incomeMonths[key]!=null;
@@ -1361,6 +1501,7 @@ function renderIncomeBox(){
     ?`Months you haven't entered use ${fmt(per)} per paycheck, carried from your latest entered month.`
     :'Months use your paycheck amount times the paydays in that month.';
 }
+// Switches tabs and remembers the choice for next time.
 window.setView=v=>{
   if(!VIEWS.includes(v))v='home';
   view=v;
@@ -1369,6 +1510,8 @@ window.setView=v=>{
   try{localStorage.setItem('cashflow:view',v);}catch(e){}
   render();
 };
+// Fills in the checking balance, the last backup date and the "undo last import" button in
+// Settings.
 function renderSettings(){
   const ci=document.getElementById('chkAmt'),cd=document.getElementById('chkDate');
   if(document.activeElement!==ci)ci.value=S.checking.amount==null?'':S.checking.amount;
@@ -1381,8 +1524,13 @@ function renderSettings(){
     if(p&&p.data)b.textContent='Undo last import (restore data from '+p.at+')';
   }).catch(()=>{});
 }
+// Days since your last backup export; null if you never exported one.
 function backupAge(){return S.lastExport?todayNum()-isoDayNum(S.lastExport):null;}
 
+// ========== WHAT IS DUE ON WHICH DAY ==========
+// The day of the month an item falls on: a bill's due day (or the day it was moved to that
+// month), a Pay in 4 plan's first payment that month, or the day from an item's date. null
+// means no fixed day.
 function dayOf(it,sect,vi){
   if(sect==='recurring'){
     const adj=it.monthAdj&&it.monthAdj[ymKey(billVi(it,vi!=null?vi:selIdx))];
@@ -1397,6 +1545,11 @@ function dayOf(it,sect,vi){
   if(it.date){return Number(it.date.split('-')[2]);}
   return null;
 }
+// Everything that takes cash out of checking in a month, as one flat list of name, amount
+// and day. Card charges are left out; each card's payment appears on its due day instead.
+// A bill marked "paid from the previous month's last paycheck" (rent) is listed on that
+// last payday and named with the date it is really due, e.g. "Rent (Dec 1)".
+// Home, the Calendar and the checking projection all read from this list.
 function calItems(vi){
   if(vi==null)vi=selIdx;
   const out=[],{y,m}=idxToYM(vi),last=daysInMonth(vi),ym=ymKey(vi);
@@ -1461,13 +1614,18 @@ function runningBalance(untilN){
   for(let n=start+1;n<=end;n++){(ev[n]||[]).forEach(e=>{bal+=e.kind==='pay'?e.amount:-e.amount;});daily.push({n,bal});}
   return {start,end,daily,at(n){if(n<=start)return daily[0].bal;return (daily[n-start]||daily[daily.length-1]).bal;}};
 }
+// The first payday after a given day (looks up to 60 days ahead).
 function nextPayday(afterN){for(let n=afterN+1;n<=afterN+60;n++){const t=dayNumToDate(n);if(isPayday(t.y,t.m,t.d))return n;}return null;}
+// Saves the checking balance typed on Home, dated today.
 window.setChecking=()=>{const el=document.getElementById('homeBal');const v=el?el.value.trim():'';if(v===''||!isFinite(Number(v))){if(el)el.classList.add('invalid');return;}S.checking={amount:Number(v),date:todayISO()};save();render();};
+// Dated items due between two days, soonest first.
 function upcomingBills(fromN,toN){
   const out=[],a=dayNumToDate(fromN),b=dayNumToDate(toN);
   for(let vi=mi(a.y,a.m);vi<=mi(b.y,b.m);vi++){const {y,m}=idxToYM(vi);calItems(vi).forEach(i=>{if(i.day==null)return;const n=dayNum(y,m,i.day);if(n>=fromN&&n<=toN)out.push(Object.assign({n},i));});}
   return out.sort((x,z)=>x.n-z.n||z.amount-x.amount);
 }
+// ========== HOME TAB ==========
+// One line in a list of bills: optional date, colored dot, name, amount.
 function billRow(i,dateTxt){
   return `<div class="dit"><span class="nm">${dateTxt?`<span class="pcdt">${dateTxt}</span>`:''}<span class="pd" style="background:${META[i.sect].col}"></span><span class="nmx">${esc(i.name)}${i.est?'<span class="est">est</span>':''}</span></span><span class="vl">${fmt(i.amount)}</span></div>`;
 }
@@ -1477,6 +1635,13 @@ function whyShort(items,when){
   const rows=[...items].sort((a,b)=>b.amount-a.amount).slice(0,3).map(i=>`<div class="budrow"><span>${esc(i.name)}${i.sect==='oneoff'?'<span class="est">one-time</span>':''}${i.n?` <span class="pcdt">${fmtDay(i.n)}</span>`:''}</span><span class="mono">${fmt0(i.amount)}</span></div>`);
   return `<div class="bud"><div class="hero-lab">Why you're short</div><div class="budhint" style="margin-top:4px">Biggest costs ${when}:</div>${rows.join('')}</div>`;
 }
+// Draws Home:
+//   - Safe to spend: the projected checking balance on the day before your next payday.
+//     With no checking balance entered, it shows this month's take-home minus cash out.
+//   - "Why you're short" when that number is negative.
+//   - Budget lines: what you've logged against each everyday budget this month.
+//   - Notes: card payments left out because they have no due day, and a backup reminder.
+//   - Bills due in the next 14 days.
 function renderHome(){
   const el=document.getElementById('home');
   const tNow=todayNum(),cur=curIdx(),np=nextPayday(tNow);
@@ -1516,6 +1681,9 @@ function renderHome(){
     <div class="hero-side"><div class="hero-lab">Due in the next 14 days</div>${side}</div></div>`;
 }
 
+// ========== CALENDAR TAB ==========
+// Paycheck coverage: one box per paycheck showing the bills it covers until the next payday,
+// plus the checking balance carried in and left over when a balance is entered.
 function renderCoverage(){
   const periods=paycheckPeriods(selIdx);
   const m=MONL[idxToYM(selIdx).m];
@@ -1547,6 +1715,8 @@ function renderCoverage(){
   document.getElementById('pcList').innerHTML=html;
 }
 
+// Draws the Calendar tab for the month being viewed: coverage, summary boxes, the timeline,
+// the day-by-day list, and the items with no fixed day.
 function renderCalendar(){
   const {y,m}=idxToYM(selIdx),ml=MONL[m],isCur=selIdx===curIdx(),tday=isCur?dayNumToDate(todayNum()).d:null;
   document.getElementById('calMonthLbl').textContent=`${ml} ${y} — switch months with the arrows at the top`;
@@ -1582,6 +1752,8 @@ function renderCalendar(){
   ).join(''):'<div class="empty">Nothing undated.</div>';
 }
 
+// Draws the bar chart of cash going out on each day of the month, with lines marking paydays
+// and today. Bar heights use a square-root scale so small bills stay visible next to rent.
 function renderTimeline(items,tday){
   const start=1,end=daysInMonth(selIdx);
   const payDays=paydaysIn(selIdx);
@@ -1611,6 +1783,7 @@ function renderTimeline(items,tday){
 }
 
 // ---------- Quick log ----------
+// Opens the + Log dialog.
 window.openLog=()=>{
   const vars=(S.recurring||[]).filter(it=>it.on!==false&&it.variable);
   const undatedV=vars.filter(it=>it.day==null),datedV=vars.filter(it=>it.day!=null);
@@ -1632,6 +1805,7 @@ window.openLog=()=>{
   logWhat();
   setTimeout(()=>{const a=document.getElementById('lg_amt');if(a)a.focus();},30);
 };
+// Updates the hint text in the dialog as you change what you're logging.
 window.logWhat=()=>{
   const v=document.getElementById('lg_what').value,hint=document.getElementById('lg_hint');
   const dt=document.getElementById('lg_date').value||todayISO(),k=dt.slice(0,7),vi=monthStartIdx(k);
@@ -1643,6 +1817,8 @@ window.logWhat=()=>{
       :`Sets ${it.name}'s amount for ${MONL[idxToYM(vi).m]}${it.months[k]!=null?` (currently ${fmt(it.months[k])})`:''}.`;
   }else hint.textContent=v==='card'?'Added to Credit-card charges. It goes on your card balance, not checking.':'Added to One-time payments. It comes out of checking.';
 };
+// Saves the entry: adds to an everyday budget's logged spending, sets a varying bill's amount
+// for that month, or adds a one-time payment or a card charge.
 window.saveLog=()=>{
   const v=document.getElementById('lg_what').value,amtEl=document.getElementById('lg_amt'),amt=Math.round(Number(amtEl.value)*100)/100;
   if(!(amt>0)){amtEl.classList.add('invalid');amtEl.focus();return;}
@@ -1659,6 +1835,9 @@ window.saveLog=()=>{
   closeModal();save();render();
 };
 
+// ========== HEADER, SUMMARY BOXES AND CHARTS ==========
+// Lists what is special about a month: take-home entered, a card payment typed for it, a bill
+// amount typed for it, a bill skipped or moved. Shown as a dot next to the month name.
 function monthOverrides(vi){
   const key=ymKey(vi),out=[];
   if(S.incomeMonths&&S.incomeMonths[key]!=null)out.push('take-home override');
@@ -1667,6 +1846,7 @@ function monthOverrides(vi){
   if((S.recurring||[]).some(it=>it.monthAdj&&it.monthAdj[ymKey(billVi(it,vi))]))out.push('bill skipped or moved');
   return out;
 }
+// Draws the month name, whether it is a past month, this month or a forecast, and the dot.
 function renderHeader(){
   const {y,m}=idxToYM(selIdx),c=curIdx();
   document.getElementById('mlabel').firstChild.textContent=MONL[m]+' '+y;
@@ -1681,6 +1861,8 @@ function renderHeader(){
   }
 }
 
+// Draws the four summary boxes on Home: cash out, cash left, card payments, and card balances
+// with the change by next month. (Despite the name, this is not the Cards tab.)
 function renderCards(){
   const pay=cardPaymentTotal(selIdx),out=cashOut(selIdx);
   const inc=incomeFor(selIdx),left=inc-out;
@@ -1698,7 +1880,9 @@ function renderCards(){
   ].join('');
 }
 
+// The numbers behind the 12-month chart, kept so the hover box can show them.
 let PROJDATA=[];
+// Shows the breakdown box when you hover over or tap a month on the chart.
 function projHover(evt,vi){
   const dd=PROJDATA.find(x=>x.vi===vi);if(!dd)return;
   const ym=idxToYM(vi);
@@ -1715,6 +1899,7 @@ function projHover(evt,vi){
   tip.style.display='block';
   projMove(evt);
 }
+// Keeps that box next to the pointer.
 function projMove(evt){
   const tip=document.getElementById('projTip'),wrap=tip.parentElement;
   if(tip.style.display!=='block')return;
@@ -1725,7 +1910,12 @@ function projMove(evt){
   tip.style.left=Math.max(0,x)+'px';
   tip.style.top=y+'px';
 }
+// Hides it.
 function projHoverOut(){document.getElementById('projTip').style.display='none';}
+// Draws the 12-month chart (7 months on a phone), starting from last month. For each month:
+// a wide stacked bar of cash leaving checking, a narrow bar of spending put on cards, and a
+// dashed line for take-home. Below the chart, "Biggest relief" finds the largest lasting
+// drop in monthly cash out over the next 18 months and names what ends.
 function renderProjection(){
   const narrow=window.innerWidth<640;
   const N=narrow?7:12,base=curIdx()-1,data=[];
@@ -1785,8 +1975,10 @@ function renderProjection(){
     el.innerHTML=`Biggest relief ahead: cash going out drops <strong>${fmt0(drop.amt)}/mo</strong> starting <strong>${MONL[ym.m]} ${ym.y}</strong>${ends.length?' as '+list+(ends.length>1?' end':' ends'):''}.`;
   }else el.innerHTML='No drop in your monthly payments in the next 18 months. Installments with payments left, and cards with payoff payments, show up here when they end.';
 }
+// Redraws the charts when the window changes size.
 window.addEventListener('resize',()=>{clearTimeout(window.__rz);window.__rz=setTimeout(()=>{if(view==='home')renderProjection();else if(view==='calendar')renderCalendar();},200);});
 
+// Draws the ring chart of where this month's cash out goes.
 function renderDonut(){
   const s={recurring:sectionSum('recurring',selIdx),affirm:sectionSum('affirm',selIdx),payin4:sectionSum('payin4',selIdx),oneoff:sectionSum('oneoff',selIdx),pay:cardPaymentTotal(selIdx),ccplans:sectionSum('ccplans',selIdx),card:sectionSum('card',selIdx)};
   const total=s.recurring+s.affirm+s.payin4+s.oneoff+s.pay;
@@ -1802,9 +1994,14 @@ function renderDonut(){
     `<div class="note-block" style="margin-top:2px">Card plans ${fmt(s.ccplans)} and card charges ${fmt(s.card)} go on your card balances, not checking. You pay them later through card payments.</div>`;
 }
 
+// Shows or hides the finished items in a list on the Bills tab.
 window.toggleDone=(sect)=>{doneOpen[sect]=!doneOpen[sect];renderSections();};
+// Draws all six lists on the Bills tab.
 function renderSections(){document.getElementById('sections').innerHTML=SECTKEYS.map(sectionHTML).join('');}
 
+// ========== CARDS TAB ==========
+// Draws one editable row per card (balance, APR, due day, payments) and the "new charges land
+// on" picker.
 function renderCardBalances(){
   const key=ymKey(selIdx), mLabel=MON[idxToYM(selIdx).m];
   const rows=S.ccBalances.map(c=>{
@@ -1834,6 +2031,9 @@ function renderCardBalances(){
 }
 // Walks the card forward month by month using the same rules as the projection, so
 // planned payments for specific months and balances you've entered all count.
+// Returns state 'ok' with the payoff month (v), the number of months (n) and the interest
+// paid; 'nopay' if no payment is set; 'under' if the payment never clears the balance;
+// 'none' if nothing is owed. It gives up after 30 years.
 function payoffPlan(c,from,charge){
   const im=(Number(c.apr)||0)/100/12, ch=Number(charge)||0, start=balanceFor(c,from);
   if(start<=0)return {state:'none',interest:0};
@@ -1852,6 +2052,9 @@ function payoffPlan(c,from,charge){
   const net=(Number(c.payment)||0)-ch;
   return (Number(c.payment)||0)<=0?{state:'nopay',interest:start*im,charge:ch}:{state:'under',interest:start*im,charge:ch,net};
 }
+// Recalculates the figures on the Cards tab without redrawing the input boxes, so typing isn't
+// interrupted: interest and balance after payment for each card, the totals, and the summary
+// with each card's payoff date and which card to pay first.
 function ccbRecalc(){
   let totB=0,totI=0,totP=0;
   const mLab=MON[idxToYM(selIdx).m], bals={};
@@ -1929,7 +2132,9 @@ function renderPayoff(){
       ${show.map(r=>`<span class="l">${lab(r.v)}</span><span>${fmt0(r.paid)}</span>${r.cells.map(x=>`<span>${x}</span>`).join('')}${multi?`<span><strong>${fmt0(r.total)}</strong></span>`:''}`).join('')}
     </div>${rows.length>24?`<div class="note-block">+ ${rows.length-24} more months</div>`:''}`;
 }
-let payoffStrategy='avalanche'; // in-memory preference (like view/half) — resets to avalanche on reload
+let payoffStrategy='avalanche'; // which card to pay first; saved with your data as S.payoffStrategy
+// Switches between avalanche (highest interest rate first) and snowball (smallest balance
+// first).
 window.setPayoffStrategy=(s)=>{
   payoffStrategy=s;S.payoffStrategy=s;save();
   const a=document.getElementById('stratAvalanche'),b=document.getElementById('stratSnowball');
@@ -1937,11 +2142,14 @@ window.setPayoffStrategy=(s)=>{
   if(b)b.classList.toggle('active',s==='snowball');
   ccbRecalc();
 };
+// Sets which card new spending lands on.
 window.setChargeCard=(id)=>{
   S.chargeCardId=String(id||'');
   save();renderCardBalances();
 };
+// A timer, so typing in a card box saves once you pause and not on every key.
 let ccbT;
+// A card's name, APR, normal payment or due day was edited.
 window.ccbInput=(id,field,val)=>{
   const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
   if(field==='dueDay'){const d=Math.floor(Number(val));c.dueDay=(d>=1&&d<=31)?d:null;}
@@ -1950,6 +2158,8 @@ window.ccbInput=(id,field,val)=>{
   if(field!=='name'&&field!=='dueDay'){renderCards();renderProjection();}
   clearTimeout(ccbT);ccbT=setTimeout(save,400);
 };
+// A card's balance was typed for the month being viewed. Clearing the box removes that
+// reading.
 window.ccbBalInput=(id,val)=>{
   const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
   const key=ymKey(selIdx);
@@ -1959,6 +2169,8 @@ window.ccbBalInput=(id,val)=>{
   ccbRecalc();renderCards();renderProjection();
   clearTimeout(ccbT);ccbT=setTimeout(save,400);
 };
+// A payment was typed for just the month being viewed. Clearing the box goes back to the
+// normal payment.
 window.ccbMonthInput=(id,val)=>{
   const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
   const key=ymKey(selIdx);
@@ -1968,12 +2180,14 @@ window.ccbMonthInput=(id,val)=>{
   ccbRecalc();renderCards();renderProjection();
   clearTimeout(ccbT);ccbT=setTimeout(save,400);
 };
+// Adds a new card.
 window.ccbAdd=()=>{
   const c={id:uid(),name:'Card',balance:0,apr:0,payment:0,payMonths:{},balanceMonths:{}};
   S.ccBalances.push(c);
   if(S.ccBalances.length===1&&!S.chargeCardId)S.chargeCardId=c.id;
   save();renderCardBalances();
 };
+// Deletes a card after asking.
 window.ccbDel=(id)=>{
   const c=S.ccBalances.find(x=>x.id===id);if(!c)return;
   if(!confirm(`Delete "${c.name}"? This removes its balance, APR, and payment history — this can't be undone.`))return;
@@ -1981,6 +2195,9 @@ window.ccbDel=(id)=>{
   if(S.chargeCardId===id)S.chargeCardId='';
   save();renderCardBalances();renderCards();renderProjection();
 };
+// ========== BILLS TAB ==========
+// Builds one list (e.g. Recurring expenses): the heading with its total, the rows sorted by
+// day, and the add form.
 function sectionHTML(sect){
   const cfg=SECT[sect],tot=sectionSum(sect,selIdx),m=MON[idxToYM(selIdx).m];
   const pausedN=S[sect].filter(x=>x.on===false).length;
@@ -2014,7 +2231,9 @@ function sectionHTML(sect){
     <div style="margin-top:10px"><button class="btn" onclick="toggleAdd('${sect}')">${addOpen[sect]?'Cancel':'+ Add '+addLabel(sect)}</button></div>
   </div>`;
 }
+// The word used on each list's add button ("loan", "plan", "charge" and so on).
 function addLabel(sect){return sect==='affirm'?'loan':sect==='ccplans'?'plan':sect==='payin4'?'Pay in 4 plan':sect==='card'?'charge':sect==='oneoff'?'payment':'expense';}
+// The message shown when a list has nothing in it.
 function emptyMsg(sect){
   if(sect==='card')return 'No card charges yet. Add a recurring charge (e.g. a subscription) or log a one-time charge.';
   if(sect==='payin4')return 'No Pay in 4 plans yet. Add a purchase split into 4 payments — set the per-payment amount, the first payment date, and how often (weekly or every 2 weeks). The 4 payments are spread across the right calendar months automatically.';
@@ -2024,6 +2243,7 @@ function emptyMsg(sect){
   return 'Nothing here yet.';
 }
 
+// Builds one row of a list. Each kind of item shows different columns.
 function rowHTML(sect,it){
   if(editing.sect===sect&&editing.id===it.id)return editRowHTML(sect,it);
   const ev=evalItem(it,sect,selIdx);
@@ -2074,12 +2294,14 @@ function rowHTML(sect,it){
   const leftTxt=off?'<span class="leftpill">paused</span>':(it.left===''||it.left==null)?'<span class="leftpill">ongoing</span>':ev.status==='done'?'<span class="leftpill">paid off</span>':ev.status==='pending'?'<span class="leftpill">starts '+fmtDate(it.date)+'</span>':'<span class="leftpill">'+ev.leftAt+' left</span>';
   return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${offbadge}</td><td class="mono" style="color:var(--mute)">${off?'—':(nextDue(it)||'—')}</td><td>${leftTxt}</td><td class="amt">${(ev.status==='on'&&!off)?fmt(it.amount):'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>'}</td>${actions(sect,it)}</tr>`;
 }
+// The pause, edit and delete buttons at the end of a row.
 function actions(sect,it){
   const off=it.on===false;
   const toggle=`<button class="icon-btn" title="${off?'Turn on':'Turn off'}" onclick="toggleOn('${sect}','${it.id}')">${off?'○':'◉'}</button>`;
   return `<td style="text-align:right;white-space:nowrap">${toggle}<button class="icon-btn" onclick="startEdit('${sect}','${it.id}')">✎</button><button class="icon-btn" onclick="del('${sect}','${it.id}')">🗑</button></td>`;
 }
 
+// Builds a row in edit mode, with input boxes for that kind of item.
 function editRowHTML(sect,it){
   const act=`<td style="text-align:right;white-space:nowrap"><button class="icon-btn" onclick="commitEdit('${sect}','${it.id}')">✓</button><button class="icon-btn" onclick="cancelEdit()">✕</button></td>`;
   const nameI=`<td class="editcell"><input id="ed_name" value="${esc(it.name)}"></td>`;
@@ -2111,6 +2333,7 @@ function editRowHTML(sect,it){
   return `<tr>${nameI}<td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${it.date||''}" value="${dispDate(it.date)}" placeholder="7/23"></td><td class="editcell"><input id="ed_left" type="number" min="0" placeholder="${leftPh}" value="${it.left??''}"></td><td class="editcell"><input id="ed_amt" class="mono" type="number" value="${it.amount||''}"></td>${act}</tr>`;
 }
 
+// Builds the "add" form for a list, if it is open.
 function addFormHTML(sect){
   if(!addOpen[sect])return '';
   if(sect==='recurring')return `<div class="addrow" style="grid-template-columns:1.3fr .6fr .8fr .8fr .9fr auto"><input id="af_name" placeholder="e.g. Water"><input id="af_day" type="number" min="1" max="31" placeholder="Due day"><select id="af_type"><option value="fixed">Fixed</option><option value="varies">Varies</option></select><input id="af_amt" class="mono" type="number" placeholder="Amount / est"><input id="af_start" type="month" title="Optional: month it starts"><button class="btn" onclick="addItem('recurring')">Save</button></div>`;
@@ -2122,6 +2345,8 @@ function addFormHTML(sect){
   return `<div class="addrow" style="grid-template-columns:1.4fr 1fr .9fr .9fr auto"><input id="af_name" placeholder="${namePh}"><input id="af_date" class="datein" type="text" autocapitalize="off" autocorrect="off" placeholder="7/23"><input id="af_left" type="number" min="0" placeholder="${leftPh}"><input id="af_amt" class="mono" type="number" placeholder="Amount"><button class="btn" onclick="addItem('${sect}')">Save</button></div>`;
 }
 
+// Makes text safe to put on the page, so a name containing < or " can't be read as code. Names
+// shown on screen go through this.
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 // Next payment date (today or later) for something billed monthly from its start date.
 function nextDue(it){
@@ -2133,14 +2358,20 @@ function nextDue(it){
   if(hasLeft&&v>st+Number(it.left)-1)return null;
   return MON[idxToYM(v).m]+' '+Math.min(dd,daysInMonth(v));
 }
+// "2026-11-13" to "Nov 13".
 function fmtDate(d){const p=d.split('-');return MON[Number(p[1])-1]+' '+Number(p[2]);}
 
+// ========== BUTTONS AND INPUT BOXES ==========
+// Month navigation: jump to a month, previous, next, back to today.
 window.selectMonth=vi=>{selIdx=vi;render();};
 document.getElementById('prevM').onclick=()=>{selIdx--;render();};
 document.getElementById('nextM').onclick=()=>{selIdx++;render();};
 document.getElementById('todayBtn').onclick=()=>{selIdx=curIdx();render();};
+// Opens or closes a list's add form.
 window.toggleAdd=sect=>{addOpen[sect]=!addOpen[sect];renderSections();};
+// Remembers the Fixed/Varies choice while a row is being edited.
 window.setEditType=v=>{editTypeTmp=v;renderSections();};
+// Adds a new item to a list from its add form.
 window.addItem=sect=>{
   const name=document.getElementById('af_name').value.trim();if(!name)return;
   const amount=Number(document.getElementById('af_amt').value)||0;
@@ -2152,9 +2383,13 @@ window.addItem=sect=>{
   else{it.date=dateVal('af_date');const lv=document.getElementById('af_left').value;it.left=lv===''?(sect==='payin4'?4:''):Number(lv);}
   S[sect].push(it);addOpen[sect]=false;save();render();
 };
+// Start editing a row; pause or resume an item; cancel an edit.
 window.startEdit=(sect,id)=>{editing={sect,id};editTypeTmp=null;renderSections();};
 window.toggleOn=(sect,id)=>{const it=S[sect].find(x=>x.id===id);if(!it)return;it.on=it.on===false?true:false;save();render();};
 window.cancelEdit=()=>{editing={sect:null,id:null};editTypeTmp=null;renderSections();};
+// Saves an edited row. For a recurring bill this also handles: paid from the previous month's
+// last paycheck, an amount change from this month on or for every month, a last month, skip or
+// move for one month, and the actual amount for a bill that varies.
 window.commitEdit=(sect,id)=>{
   const it=S[sect].find(x=>x.id===id);if(!it)return;
   it.name=document.getElementById('ed_name').value||it.name;
@@ -2199,11 +2434,14 @@ window.commitEdit=(sect,id)=>{
   }
   editing={sect:null,id:null};editTypeTmp=null;save();render();
 };
+// Deletes an item after asking.
 window.del=(sect,id)=>{
   const it=S[sect].find(x=>x.id===id);if(!it)return;
   if(!confirm(`Delete "${it.name}"? This can't be undone.`))return;
   S[sect]=S[sect].filter(x=>x.id!==id);save();render();
 };
+// Settings boxes: paycheck amount, a known payday, take-home for the month being viewed (and
+// its clear button), checking balance and its date. Typing saves after a short pause.
 let inT;document.getElementById('paycheck').oninput=e=>{S.paycheck=Number(e.target.value)||0;clearTimeout(inT);inT=setTimeout(()=>{save();render();},400);};
 document.getElementById('payAnchor').onchange=e=>{const v=e.target.value;if(/^\d{4}-\d{2}-\d{2}$/.test(v)){S.payAnchor=v;save();render();}else{e.target.value=S.payAnchor||DEFAULT_PAY_ANCHOR;}};
 let inOvT;document.getElementById('incOverride').oninput=e=>{
@@ -2236,6 +2474,9 @@ document.addEventListener('focusout',e=>{
   if(iso){el.value=dispDate(iso);el.dataset.iso=iso;el.classList.remove('invalid');}
   else el.classList.add('invalid');
 });
+// ========== BACKUP ==========
+// Downloads all your data as a file named cashflow-YYYY-MM-DD.json and records today as the
+// date of your last backup.
 function doExport(){
   S.lastExport=todayISO();
   const b=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),url=URL.createObjectURL(b),a=document.createElement('a');
@@ -2246,9 +2487,14 @@ function doExport(){
 window.doExport=doExport;
 document.getElementById('exportBtn').onclick=doExport;
 document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+// Where the data from just before an import is kept, so the import can be undone.
 const PREV_KEY=KEY+':before-import';
+// A backup file that has been read but not yet confirmed.
 let IMPORT_PENDING=null;
+// One line describing how much is in a set of data, for the import preview.
 function dataSummary(o){const n=k=>Array.isArray(o[k])?o[k].length:0;return `${n('recurring')} recurring bills · ${n('affirm')+n('ccplans')+n('payin4')} installment plans · ${n('oneoff')} one-time payments · ${n('card')} card charges · ${n('ccBalances')} cards`;}
+// A backup file was chosen: check that it looks like a cashflow backup, then show a preview
+// and ask before replacing anything.
 document.getElementById('importFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   const rd=new FileReader();
@@ -2269,12 +2515,14 @@ document.getElementById('importFile').onchange=e=>{
   };
   rd.readAsText(f);e.target.value='';
 };
+// Replaces your data with the backup, keeping the old data so it can be restored.
 window.confirmImport=async()=>{
   if(!IMPORT_PENDING)return;
   try{await store.set(PREV_KEY,JSON.stringify({at:todayISO(),data:S}));}catch(e){}
   S=normalize(IMPORT_PENDING);IMPORT_PENDING=null;payoffStrategy=S.payoffStrategy;
   closeModal();await save();render();
 };
+// Undo last import: swaps the current data with the copy kept from before it.
 window.restorePrev=async()=>{
   let p=null;try{const r=await store.get(PREV_KEY);p=r&&r.value?JSON.parse(r.value):null;}catch(e){}
   if(!p||!p.data)return;
@@ -2287,6 +2535,7 @@ window.restorePrev=async()=>{
 /* ---------- Chase statement import (CSV) ----------
    Runs entirely in the browser. Keeps only date / cleaned name / amount
    from checked rows; the raw file, balances, and refs are never stored. */
+// Splits the text of a CSV file into rows and columns, handling quoted values.
 function csvParse(text){
   const rows=[];let row=[],cur='',q=false;
   text=String(text).replace(/^\uFEFF/,'');
@@ -2301,7 +2550,10 @@ function csvParse(text){
   row.push(cur); if(row.some(f=>f.trim()!==''))rows.push(row);
   return rows;
 }
+// US state codes, removed from the end of merchant names.
 const IMP_STATE=/\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)$/;
+// Tidies a bank description into a short merchant name: strips ids, dates, phone and store
+// numbers and payment-processor prefixes, and fixes ALL CAPS.
 function cleanDesc(raw){
   let d=String(raw).replace(/\s+/g,' ').trim();
   const refs=[]; d=d.replace(/\(\.\.\.(\d{4})\)/g,(m,n)=>{refs.push(n);return '\u0001'+(refs.length-1)+'\u0001';});
@@ -2325,7 +2577,9 @@ const DEST_GUESS=[
   [/shell|exxon|conoco|chevron|7-?eleven|sinclair|maverik|phillips 66|circle k|valero|bp\b|fuel|gas\b/i,/^gas|fuel/i],
   [/restaurant|cafe|coffee|starbucks|\bbar\b|grill|pizza|taco|chipotle|doordash|uber ?eats|grubhub|brew|kitchen/i,/dining|discretionary|fun|eat/i],
 ];
+// Your everyday budgets: bills that vary and have no fixed day (Groceries, Gas).
 function everydayBills(){return (S.recurring||[]).filter(it=>it.variable&&it.day==null);}
+// Picks where one imported purchase goes, using the rules described above.
 function guessDest(name){
   const m=S.merchantMap[name];
   if(m==='oneoff')return 'oneoff';
@@ -2333,6 +2587,9 @@ function guessDest(name){
   for(const [re,bill] of DEST_GUESS){if(re.test(name)){const it=everydayBills().find(x=>bill.test(x.name));if(it)return it.id;}}
   return 'oneoff';
 }
+// Reads a Chase checking export. Keeps money going out, ignores deposits, and marks each row
+// as a likely purchase (ticked), a likely autopay you already track (unticked), or already
+// imported (unticked).
 function parseChaseCSV(text){
   const rows=csvParse(text);
   if(rows.length<2)return null;
@@ -2363,7 +2620,9 @@ function parseChaseCSV(text){
   txns.sort((a,b)=>a.group===b.group?(a.date<b.date?1:-1):(a.group==='buy'?-1:1));
   return {txns,credits};
 }
+// The statement currently being reviewed.
 let IMP=null;
+// Draws the import review dialog: each row with a tick box and a choice of where it goes.
 function impRender(){
   let bg=document.getElementById('impModal');
   if(!bg){bg=document.createElement('div');bg.className='modal-bg';bg.id='impModal';document.body.appendChild(bg);}
@@ -2384,10 +2643,15 @@ function impRender(){
     <div class="imp-foot"><span class="imp-sum">${selected.length} selected · ${fmt(sum)}</span><span style="display:flex;gap:8px"><button class="btn sm" onclick="impClose()">Cancel</button><button class="btn" onclick="impCommit()" ${selected.length?'':'disabled'}>Add selected</button></span></div>
   </div>`;
 }
+// Tick or untick a row; change where a row goes; tick or untick a whole group; close the
+// dialog.
 window.impToggle=i=>{IMP.txns[i].sel=!IMP.txns[i].sel;impRender();};
 window.impDest=(i,v)=>{IMP.txns[i].dest=v;};
 window.impSet=(g,v)=>{IMP.txns.forEach(t=>{if(t.group===g)t.sel=v;});impRender();};
 window.impClose=()=>{IMP=null;const m=document.getElementById('impModal');if(m)m.remove();};
+// Imports the ticked rows: adds each to an everyday budget's logged spending or to One-time
+// payments, remembers the choice for that merchant, and records the row so it isn't imported
+// twice.
 window.impCommit=()=>{
   IMP.txns.filter(t=>t.sel).forEach(t=>{
     const it=t.dest!=='oneoff'&&S.recurring.find(x=>x.id===t.dest);
@@ -2398,6 +2662,7 @@ window.impCommit=()=>{
   });
   impClose();save();render();
 };
+// A statement file was chosen: read it and open the review dialog.
 document.getElementById('stmtBtn').onclick=()=>document.getElementById('stmtFile').click();
 document.getElementById('stmtFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
@@ -2408,5 +2673,6 @@ document.getElementById('stmtFile').onchange=e=>{
 
 // Offline support once it's hosted (service workers need https).
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+// Start the app.
 load();
 </script>
