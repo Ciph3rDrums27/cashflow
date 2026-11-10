@@ -1505,14 +1505,12 @@ function renderHome(){
   const rb=runningBalance(tNow+50);
   let main;
   if(rb){
-    const from=Math.max(tNow,rb.start),win=rb.daily.filter(x=>x.n>=from&&x.n<=tNow+45);
-    const low=win.reduce((a,x)=>x.bal<a.bal?x:a,win[0]||rb.daily[0]);
-    const now=rb.at(tNow),before=np?rb.at(np-1):null;
-    const stale=S.checking.date!==todayISO();
-    main=`<div class="hero-lab">${low.bal<0?'Heads up':'Safe to spend now'}</div>
-      <div class="hero-num${low.bal<0?' neg':''}">${low.bal<0?'Short '+fmt0(-low.bal):fmt0(low.bal)}</div>
-      <div class="hero-sub">${low.bal<0?`Checking is projected to drop below zero on <strong>${fmtDay(low.n)}</strong>.`:`Lowest point ahead: <strong>${fmt0(low.bal)}</strong> on ${fmtDay(low.n)}. Spend more than this and that day goes negative.`}</div>
-      <div class="hero-meta">Checking ${stale?'projected ':''}${fmt0(now)} today${stale?` · from your ${fmtDay(rb.start)} balance <button class="lnk" onclick="setView('settings')">update</button>`:''}${np?` · next payday ${fmtDay(np)}, ${fmt0(before)} the day before`:''}</div>`;
+    // Safe to spend = what's left in checking the day before your next paycheck.
+    const end=np?np-1:tNow+14,now=rb.at(tNow),left=rb.at(end),stale=S.checking.date!==todayISO();
+    main=`<div class="hero-lab">Safe to spend until ${np?fmtDay(np):'payday'}</div>
+      <div class="hero-num${left<0?' neg':''}">${left<0?'Short '+fmt0(-left):fmt0(left)}</div>
+      <div class="hero-sub">${fmt0(now)} in checking, minus ${fmt0(now-left)} in bills and everyday spending before payday.</div>
+      ${stale?`<div class="hero-meta">Based on your ${fmtDay(rb.start)} balance. <button class="lnk" onclick="setView('settings')">Update it</button></div>`:''}`;
   }else{
     const left=incomeFor(cur)-cashOut(cur);
     main=`<div class="hero-lab">Left in ${MONL[idxToYM(cur).m]} after everything clears</div>
