@@ -26,6 +26,7 @@ Fragmented autopay dates across many creditors make the cumulative monthly outfl
 - **Expense ledgers:** recurring bills, installment loans, Pay in 4, credit-card plans, one-time payments, and card charges. Installments end on their own after the last payment.
 - **Cash vs. credit separation:** what leaves checking (bills, installments, card payments) is tracked separately from spending that lands on a card balance.
 - **Paycheck coverage:** each paycheck covers the bills due until the next one, with checking carried over from earlier checks. Bills like rent can be marked as paid from the previous month's last paycheck.
+- **Budget vs. actual:** Home shows what you've logged this month against each everyday budget (e.g. Groceries $310 of $400).
 - **Quick logging:** use **+ Log** for groceries, gas, a bill amount, or a one-off purchase.
 - **History-safe edits:** change a bill's amount from a given month on, set a last month, or skip or move one month's payment, without rewriting the past.
 - **Credit cards:** per-month balances and payments, due days on the calendar, payoff dates that follow your planned payments, payments that stop once a card is paid off.

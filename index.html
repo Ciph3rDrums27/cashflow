@@ -187,6 +187,11 @@
   .hero-meta{font-size:12px;color:var(--mute);margin-top:6px;line-height:1.5}
   .hero-notes{margin-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--mute);line-height:1.5;border-top:1px solid var(--line);padding-top:10px}
   .hero-notes strong,.hero-sub strong{color:var(--ink)}
+  .bud{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+  .budrow{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-top:8px}
+  .budbar{height:6px;border-radius:3px;background:var(--line);margin-top:4px;overflow:hidden}
+  .budbar i{display:block;height:100%;background:var(--income)} .budbar i.over{background:var(--gold)}
+  .budhint{font-size:12px;color:var(--mute);margin-top:8px}
   .hero-side .dit{padding:5px 0;border-bottom:1px solid var(--line)}
   .hero-side .dit:last-of-type{border-bottom:none}
   .warnt{color:var(--gold)} .okt{color:var(--income)}
@@ -1492,11 +1497,18 @@ function renderHome(){
       <div class="formrow" style="margin-top:8px"><label>Checking balance today $<span style="display:flex;gap:8px"><input id="homeBal" class="mono" type="number" inputmode="decimal" placeholder="0.00"><button class="btn" onclick="setChecking()">Save</button></span></label></div>`;
   }
   const notes=[];
+  // Budget vs. actual: what you've logged this month against each everyday budget.
+  const k=ymKey(cur);
+  const bud=(S.recurring||[]).filter(it=>it.on!==false&&it.variable&&it.day==null&&amountAt(it,cur)>0).map(it=>{
+    const b=amountAt(it,cur),sp=Number(it.spent&&it.spent[k])||0,over=sp>b;
+    return `<div class="budrow"><span>${esc(it.name)}</span><span class="mono${over?' warnt':''}">${fmt0(sp)} of ${fmt0(b)}${over?' · over by '+fmt0(sp-b):''}</span></div><div class="budbar"><i class="${over?'over':''}" style="width:${Math.min(100,sp/b*100)}%"></i></div>`;
+  }).join('');
+  const budget=bud?`<div class="bud"><div class="hero-lab">${MONL[idxToYM(cur).m]} budget</div>${bud}<div class="budhint">Use + Log to count spending against a budget.</div></div>`:'';
   const age=backupAge();
   if(age==null||age>14)notes.push(`<span class="warnt">${age==null?'No backup yet.':'Last backup '+age+' days ago.'}</span> <button class="lnk" onclick="doExport()">Export now</button>`);
   const up=upcomingBills(tNow,tNow+14);
   const side=up.length?up.slice(0,7).map(i=>billRow(i,i.n===tNow?'Today':fmtDay(i.n))).join('')+(up.length>7?`<div class="note-block">+ ${up.length-7} more in the Calendar</div>`:''):'<div class="empty">Nothing due in the next 14 days.</div>';
-  el.innerHTML=`<div class="hero-grid"><div class="hero-main">${main}<div class="hero-notes">${notes.map(n=>`<div>${n}</div>`).join('')}</div></div>
+  el.innerHTML=`<div class="hero-grid"><div class="hero-main">${main}${budget}<div class="hero-notes">${notes.map(n=>`<div>${n}</div>`).join('')}</div></div>
     <div class="hero-side"><div class="hero-lab">Due in the next 14 days</div>${side}</div></div>`;
 }
 
