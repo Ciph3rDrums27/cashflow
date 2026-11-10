@@ -1483,6 +1483,15 @@ function upcomingBills(fromN,toN){
 function billRow(i,dateTxt){
   return `<div class="dit"><span class="nm">${dateTxt?`<span class="pcdt">${dateTxt}</span>`:''}<span class="pd" style="background:${META[i.sect].col}"></span><span class="nmx">${esc(i.name)}${i.est?'<span class="est">est</span>':''}</span></span><span class="vl">${fmt(i.amount)}</span></div>`;
 }
+// When you're short, show the biggest costs behind it.
+function whyShort(bills,out,when){
+  const rows=[...bills].sort((a,b)=>b.amount-a.amount).slice(0,3).map(i=>`<div class="budrow"><span>${esc(i.name)}${i.sect==='oneoff'?'<span class="est">one-time</span>':''} <span class="pcdt">${fmtDay(i.n)}</span></span><span class="mono">${fmt0(i.amount)}</span></div>`);
+  const every=out-bills.reduce((t,i)=>t+i.amount,0);
+  // card payments with no due day are spread across the month along with everyday spending
+  const noDue=(S.ccBalances||[]).some(c=>c.dueDay==null&&cardCashPay(c,curIdx())>0);
+  if(every>=1)rows.push(`<div class="budrow"><span>Everyday spending${noDue?' + card payments with no due day':''}</span><span class="mono">${fmt0(every)}</span></div>`+(noDue?`<div class="budhint">Card payments without a due day are spread across the month. <button class="lnk" onclick="setView('cards')">Set due days</button></div>`:''));
+  return `<div class="bud"><div class="hero-lab">Why you're short</div><div class="budhint" style="margin-top:4px">Biggest costs ${when}:</div>${rows.join('')}</div>`;
+}
 function renderHome(){
   const el=document.getElementById('home');
   const tNow=todayNum(),cur=curIdx(),np=nextPayday(tNow);
@@ -1495,12 +1504,14 @@ function renderHome(){
       <div class="hero-num${left<0?' neg':''}">${left<0?'Short '+fmt0(-left):fmt0(left)}</div>
       <div class="hero-sub">${fmt0(now)} in checking, minus ${fmt0(now-left)} in bills and everyday spending before payday.</div>
       ${stale?`<div class="hero-meta">Based on your ${fmtDay(rb.start)} balance. <button class="lnk" onclick="setView('settings')">Update it</button></div>`:''}`;
+    if(left<0)main+=whyShort(upcomingBills(tNow+1,end),now-left,'before payday');
   }else{
     const left=incomeFor(cur)-cashOut(cur);
     main=`<div class="hero-lab">Left in ${MONL[idxToYM(cur).m]} after everything clears</div>
       <div class="hero-num${left<0?' neg':''}">${fmt0(left)}</div>
       <div class="hero-sub">Add today's checking balance to see what's safe to spend until payday.</div>
       <div class="formrow" style="margin-top:8px"><label>Checking balance today $<span style="display:flex;gap:8px"><input id="homeBal" class="mono" type="number" inputmode="decimal" placeholder="0.00"><button class="btn" onclick="setChecking()">Save</button></span></label></div>`;
+    if(left<0){const t=idxToYM(cur);main+=whyShort(upcomingBills(dayNum(t.y,t.m,1),dayNum(t.y,t.m,daysInMonth(cur))),cashOut(cur),'this month');}
   }
   const notes=[];
   // Budget vs. actual: what you've logged this month against each everyday budget.
