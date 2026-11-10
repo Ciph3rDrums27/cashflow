@@ -195,11 +195,7 @@
   .formrow label{display:flex;flex-direction:column;gap:5px;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint)}
   .formrow.stack{flex-direction:column;align-items:stretch}
   .formrow.stack input,.formrow.stack select{width:100%}
-  .chk{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:none;color:transparent;cursor:pointer;font-size:12px;line-height:1;flex:0 0 auto;padding:0}
-  .chk:hover{border-color:var(--income);color:var(--income)}
-  .chk.on{background:var(--income);border-color:var(--income);color:#0c0e1a}
   .dit .nmx{min-width:0;overflow:hidden;text-overflow:ellipsis}
-  .dit.paid .nmx,.dit.paid .vl{text-decoration:line-through;color:var(--faint)}
   .dit .pcdt{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:11.5px;color:var(--faint);flex:0 0 50px}
   .pcp .dit{padding:3px 0}
   .pcbal{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 10px;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:12px;color:var(--mute);margin-top:6px}
@@ -224,7 +220,6 @@
     input,select{font-size:16px}
     .btn,.btn.sm{min-height:42px;font-size:14px}
     .icon-btn{min-width:40px;min-height:40px;font-size:16px}
-    .chk{width:30px;height:30px;font-size:14px}
     .viewsw{margin-bottom:14px}
     .viewsw button{padding:10px 12px;font-size:14px}
     .cards{grid-template-columns:1fr 1fr;gap:8px}
@@ -839,15 +834,6 @@
   <div id="billsView" class="view"><div id="sections"></div></div>
 
   <div id="cardsView" class="view">
-    <div class="panel" id="planPanel">
-      <h2>Debt-free plan</h2>
-      <p class="ph">Pick when you want your cards paid off and how much you'll let yourself put on them each month. The plan below checks your scheduled payments against both.</p>
-      <div class="formrow">
-        <label>Debt-free by<input id="planTarget" type="month" onchange="setPlan('target',this.value)"></label>
-        <label>Card spending limit $/mo<input id="planLimit" class="mono" type="number" inputmode="decimal" placeholder="none" oninput="setPlan('spendLimit',this.value)"></label>
-      </div>
-      <div class="insight" id="planOut"></div>
-    </div>
 
     <div class="panel" id="ccBalPanel">
       <div class="sechead"><div class="tt"><span class="pd" style="background:var(--card)"></span>Credit card balances</div><div class="sectot" id="ccBalTot"></div></div>
@@ -862,10 +848,6 @@
         <label>New charges land on<select id="chargeCardSel" title="The card you actually spend on. Its projected balance gets your card spending added each month." onchange="setChargeCard(this.value)"></select></label>
       </div>
       <div class="insight" id="ccBalSummary" style="border-left-color:var(--card)"></div>
-      <div class="formrow" style="margin-top:14px">
-        <label>What if I pay extra $/mo<input id="extraPay" class="mono" type="number" inputmode="decimal" placeholder="0" oninput="setPlan('extra',this.value)"></label>
-      </div>
-      <div class="insight" id="whatIfOut" style="border-left-color:var(--gold)"></div>
     </div>
   </div>
 
@@ -1136,14 +1118,9 @@ function normalize(s){
     if(!it.spent||typeof it.spent!=='object')it.spent={};
     if(it.end!=null&&!/^\d{4}-\d{2}$/.test(String(it.end)))delete it.end;
   });
-  if(!s.paid||typeof s.paid!=='object')s.paid={};
   if(!s.checking||typeof s.checking!=='object')s.checking={};
   {const a=s.checking.amount;s.checking.amount=(a===''||a==null||!isFinite(Number(a)))?null:Number(a);}
   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(s.checking.date||'')))s.checking.date='';
-  if(!s.debtPlan||typeof s.debtPlan!=='object')s.debtPlan={};
-  s.debtPlan.target=/^\d{4}-\d{2}$/.test(String(s.debtPlan.target||''))?s.debtPlan.target:'';
-  s.debtPlan.spendLimit=Math.max(0,Number(s.debtPlan.spendLimit)||0);
-  s.debtPlan.extra=Math.max(0,Number(s.debtPlan.extra)||0);
   if(s.payoffStrategy!=='snowball')s.payoffStrategy='avalanche';
   if(!s.merchantMap||typeof s.merchantMap!=='object')s.merchantMap={};
   if(!s.imported||typeof s.imported!=='object')s.imported={};
@@ -1225,8 +1202,7 @@ function cardChargesFor(c,vi){
   // Spending through the current month has already hit the balance you're reading off
   // your statement, so only months still ahead add new charges on top.
   if(!S.chargeCardId||c.id!==S.chargeCardId||vi<=curIdx())return 0;
-  // With a spending limit set, plan for at least that much new spending each month.
-  return Math.max(monthlyChargesFor(vi),Number(S.debtPlan&&S.debtPlan.spendLimit)||0);
+  return monthlyChargesFor(vi);
 }
 // Walks the roll-forward and keeps the running parts, so the projection can show its
 // own arithmetic. balanceFor is just the resulting balance.
@@ -1478,7 +1454,6 @@ function runningBalance(untilN){
         anytime+=i.spent>0?Math.max(0,i.amount-i.spent):i.amount*daysLeft/last;
         return;
       }
-      if(S.paid[i.key])return;
       add(dayNum(y,m,i.day),Object.assign({kind:'bill'},i));
     });
     if(anytime>0&&daysLeft>0){const per=anytime/daysLeft;for(let n=from;n<=lastN;n++)add(n,{kind:'spend',amount:per});}
@@ -1488,7 +1463,6 @@ function runningBalance(untilN){
   return {start,end,daily,at(n){if(n<=start)return daily[0].bal;return (daily[n-start]||daily[daily.length-1]).bal;}};
 }
 function nextPayday(afterN){for(let n=afterN+1;n<=afterN+60;n++){const t=dayNumToDate(n);if(isPayday(t.y,t.m,t.d))return n;}return null;}
-window.togglePaid=key=>{if(S.paid[key])delete S.paid[key];else S.paid[key]=todayISO();save();render();};
 window.setChecking=()=>{const el=document.getElementById('homeBal');const v=el?el.value.trim():'';if(v===''||!isFinite(Number(v))){if(el)el.classList.add('invalid');return;}S.checking={amount:Number(v),date:todayISO()};save();render();};
 function upcomingBills(fromN,toN){
   const out=[],a=dayNumToDate(fromN),b=dayNumToDate(toN);
@@ -1496,8 +1470,7 @@ function upcomingBills(fromN,toN){
   return out.sort((x,z)=>x.n-z.n||z.amount-x.amount);
 }
 function billRow(i,dateTxt){
-  const paid=!!S.paid[i.key];
-  return `<div class="dit${paid?' paid':''}"><span class="nm"><button class="chk${paid?' on':''}" onclick="togglePaid('${i.key}')" aria-label="${paid?'Mark as not paid':'Mark as paid'}" title="${paid?'Paid — tap to undo':'Mark as paid'}">✓</button>${dateTxt?`<span class="pcdt">${dateTxt}</span>`:''}<span class="pd" style="background:${META[i.sect].col}"></span><span class="nmx">${esc(i.name)}${i.est?'<span class="est">est</span>':''}</span></span><span class="vl">${fmt(i.amount)}</span></div>`;
+  return `<div class="dit"><span class="nm">${dateTxt?`<span class="pcdt">${dateTxt}</span>`:''}<span class="pd" style="background:${META[i.sect].col}"></span><span class="nmx">${esc(i.name)}${i.est?'<span class="est">est</span>':''}</span></span><span class="vl">${fmt(i.amount)}</span></div>`;
 }
 function renderHome(){
   const el=document.getElementById('home');
@@ -1505,27 +1478,20 @@ function renderHome(){
   const rb=runningBalance(tNow+50);
   let main;
   if(rb){
-    const from=Math.max(tNow,rb.start),win=rb.daily.filter(x=>x.n>=from&&x.n<=tNow+45);
-    const low=win.reduce((a,x)=>x.bal<a.bal?x:a,win[0]||rb.daily[0]);
-    const now=rb.at(tNow),before=np?rb.at(np-1):null;
-    const stale=S.checking.date!==todayISO();
-    main=`<div class="hero-lab">${low.bal<0?'Heads up':'Safe to spend now'}</div>
-      <div class="hero-num${low.bal<0?' neg':''}">${low.bal<0?'Short '+fmt0(-low.bal):fmt0(low.bal)}</div>
-      <div class="hero-sub">${low.bal<0?`Checking is projected to drop below zero on <strong>${fmtDay(low.n)}</strong>.`:`Lowest point ahead: <strong>${fmt0(low.bal)}</strong> on ${fmtDay(low.n)}. Spend more than this and that day goes negative.`}</div>
-      <div class="hero-meta">Checking ${stale?'projected ':''}${fmt0(now)} today${stale?` · from your ${fmtDay(rb.start)} balance <button class="lnk" onclick="setView('settings')">update</button>`:''}${np?` · next payday ${fmtDay(np)}, ${fmt0(before)} the day before`:''}</div>`;
+    // Safe to spend = what's left in checking the day before your next paycheck.
+    const end=np?np-1:tNow+14,now=rb.at(tNow),left=rb.at(end),stale=S.checking.date!==todayISO();
+    main=`<div class="hero-lab">Safe to spend until ${np?fmtDay(np):'payday'}</div>
+      <div class="hero-num${left<0?' neg':''}">${left<0?'Short '+fmt0(-left):fmt0(left)}</div>
+      <div class="hero-sub">${fmt0(now)} in checking, minus ${fmt0(now-left)} in bills and everyday spending before payday.</div>
+      ${stale?`<div class="hero-meta">Based on your ${fmtDay(rb.start)} balance. <button class="lnk" onclick="setView('settings')">Update it</button></div>`:''}`;
   }else{
     const left=incomeFor(cur)-cashOut(cur);
     main=`<div class="hero-lab">Left in ${MONL[idxToYM(cur).m]} after everything clears</div>
       <div class="hero-num${left<0?' neg':''}">${fmt0(left)}</div>
-      <div class="hero-sub">Add today's checking balance to see what's safe to spend and your lowest point before payday.</div>
+      <div class="hero-sub">Add today's checking balance to see what's safe to spend until payday.</div>
       <div class="formrow" style="margin-top:8px"><label>Checking balance today $<span style="display:flex;gap:8px"><input id="homeBal" class="mono" type="number" inputmode="decimal" placeholder="0.00"><button class="btn" onclick="setChecking()">Save</button></span></label></div>`;
   }
   const notes=[];
-  const plan=planStatus();
-  if(plan)notes.push(plan.html);
-  const undated=(S.recurring||[]).filter(it=>it.variable&&it.day==null);
-  const onU=undated.filter(it=>it.on!==false&&evalItem(it,'recurring',cur).amt>0),offU=undated.filter(it=>it.on===false);
-  notes.push(`Everyday spending counted: ${onU.length?onU.map(it=>esc(it.name)+' '+fmt0(evalItem(it,'recurring',cur).amt)).join(', '):'none'}.${offU.length?` <span class="warnt">Paused, so counted as $0: ${offU.map(it=>esc(it.name)).join(', ')}.</span>`:''}`);
   const age=backupAge();
   if(age==null||age>14)notes.push(`<span class="warnt">${age==null?'No backup yet.':'Last backup '+age+' days ago.'}</span> <button class="lnk" onclick="doExport()">Export now</button>`);
   const up=upcomingBills(tNow,tNow+14);
@@ -1848,89 +1814,7 @@ function renderCardBalances(){
     `<option value="${c.id}"${S.chargeCardId===c.id?' selected':''}>${esc(c.name)}</option>`).join('');
   document.getElementById('stratAvalanche').classList.toggle('active',payoffStrategy==='avalanche');
   document.getElementById('stratSnowball').classList.toggle('active',payoffStrategy==='snowball');
-  const pt=document.getElementById('planTarget'),pl=document.getElementById('planLimit'),ex=document.getElementById('extraPay');
-  if(document.activeElement!==pt)pt.value=S.debtPlan.target||'';
-  if(document.activeElement!==pl)pl.value=S.debtPlan.spendLimit||'';
-  if(document.activeElement!==ex)ex.value=S.debtPlan.extra||'';
   ccbRecalc();
-}
-window.setPlan=(field,val)=>{
-  if(field==='target')S.debtPlan.target=/^\d{4}-\d{2}$/.test(val)?val:'';
-  else S.debtPlan[field]=Math.max(0,Number(val)||0);
-  clearTimeout(ccbT);ccbT=setTimeout(save,400);
-  ccbRecalc();renderCards();
-};
-// Is the scheduled plan on track? Uses each card's own month-by-month payments.
-function planStatus(){
-  const cur=curIdx(),cards=(S.ccBalances||[]).filter(c=>balanceFor(c,cur)>0.005);
-  if(!cards.length)return null;
-  const res=cards.map(c=>({c,po:payoffPlan(c,cur,cardChargesFor(c,cur+1))}));
-  const bad=res.filter(r=>r.po.state!=='ok');
-  const tgt=S.debtPlan.target?monthStartIdx(S.debtPlan.target):null;
-  const goal=tgt==null?'':MONL[idxToYM(tgt).m]+' '+idxToYM(tgt).y;
-  if(bad.length)return {html:`<span class="warnt">Not on track:</span> ${bad.map(r=>esc(r.c.name)).join(' and ')} ${bad.length>1?"aren't":"isn't"} scheduled to be paid off. <button class="lnk" onclick="setView('cards')">Plan payments</button>`,ok:false,tgt};
-  const lastV=Math.max(...res.map(r=>r.po.v)),ym=idxToYM(lastV),when=MONL[ym.m]+' '+ym.y;
-  if(tgt==null)return {html:`Cards paid off by <strong>${when}</strong> with your scheduled payments.`,ok:true,lastV,tgt};
-  if(lastV<=tgt)return {html:`<span class="okt">On track:</span> cards paid off by <strong>${when}</strong> (goal ${goal}).`,ok:true,lastV,tgt};
-  return {html:`<span class="warnt">Behind:</span> cards paid off by <strong>${when}</strong>, ${lastV-tgt} month${lastV-tgt===1?'':'s'} after your ${goal} goal.`,ok:false,lastV,tgt};
-}
-// Pays all cards together month by month. Each card gets its scheduled payment (or, with
-// `flat`, one total split by payoff order); money freed when a card is paid off, plus any
-// extra, goes to the next card in payoff order.
-function simDebt(opt){
-  const from=curIdx(),order=opt.order||'avalanche',extra=Number(opt.extra)||0,stopAt=opt.until==null?from+360:opt.until;
-  const cs=(S.ccBalances||[]).map(c=>({c,bal:balanceFor(c,from),im:(Number(c.apr)||0)/100/12,paidV:null}));
-  cs.forEach(x=>{if(x.bal<=0.005)x.paidV=from-1;});
-  let interest=0;
-  for(let v=from;v<=stopAt;v++){
-    if(cs.every(x=>x.paidV!=null))break;
-    let pool=extra+(opt.flat||0);
-    cs.forEach(x=>{
-      if(opt.flat){return;}
-      const ov=x.c.payMonths&&x.c.payMonths[ymKey(v)],sched=ov!=null?Number(ov):(Number(x.c.payment)||0);
-      const pay=Math.min(sched,x.bal);x.bal-=pay;pool+=sched-pay;
-    });
-    const live=cs.filter(x=>x.bal>0.005).sort((a,b)=>order==='snowball'?a.bal-b.bal:b.im-a.im);
-    for(const x of live){if(pool<=0)break;const p=Math.min(pool,x.bal);x.bal-=p;pool-=p;}
-    cs.forEach(x=>{
-      if(x.bal<=0.005&&x.paidV==null)x.paidV=v;
-      const int=Math.max(0,x.bal)*x.im;interest+=int;x.bal=Math.max(0,x.bal)+int+cardChargesFor(x.c,v);
-    });
-  }
-  const done=cs.every(x=>x.paidV!=null);
-  return {done,v:done?Math.max(...cs.map(x=>x.paidV)):null,interest,cards:cs};
-}
-function renderPlanOut(){
-  const out=document.getElementById('planOut');if(!out)return;
-  const st=planStatus(),cur=curIdx(),lim=S.debtPlan.spendLimit;
-  if(!st){out.innerHTML='No card balances to pay off right now.';return;}
-  const lines=[st.html];
-  if(st.tgt!=null){
-    if(st.tgt<cur)lines.push('Pick a goal month in the future.');
-    else{
-      // smallest equal monthly total that clears everything by the goal month
-      let lo=0,hi=Math.max(100,(S.ccBalances||[]).reduce((s,c)=>s+balanceFor(c,cur),0)*1.5+lim*2);
-      if(!simDebt({flat:hi,until:st.tgt,order:payoffStrategy}).done)lines.push("That goal can't be reached at any realistic payment with this much new card spending.");
-      else{for(let i=0;i<40;i++){const mid=(lo+hi)/2;if(simDebt({flat:mid,until:st.tgt,order:payoffStrategy}).done)hi=mid;else lo=mid;}
-        const g=idxToYM(st.tgt);
-        lines.push(`To be debt-free by ${MONL[g.m]} ${g.y}: about <strong>${fmt0(Math.ceil(hi))}/mo</strong> total across your cards from ${MONL[idxToYM(cur).m]} on, paying them off in ${payoffStrategy} order.`);}
-    }
-  }
-  const now=monthlyChargesFor(cur);
-  if(lim)lines.push(`Card spending in ${MONL[idxToYM(cur).m]}: <strong>${fmt0(now)}</strong> of your ${fmt0(lim)} limit${now>lim?' — <span class="warnt">over the limit</span>':''}. The plan assumes ${fmt0(lim)}/mo of new charges from next month.`);
-  else lines.push(`<span class="warnt">No card spending limit set.</span> The plan assumes only the ${fmt0(monthlyChargesFor(cur+1))}/mo of card charges you've scheduled, so any other spending on cards pushes payoff later.`);
-  out.innerHTML=lines.map(x=>`<div style="margin:3px 0">${x}</div>`).join('');
-}
-function renderWhatIf(){
-  const out=document.getElementById('whatIfOut');if(!out)return;
-  if(!(S.ccBalances||[]).some(c=>balanceFor(c,curIdx())>0.005)){out.innerHTML='No card balances to pay off right now.';return;}
-  const extra=S.debtPlan.extra;
-  const show=r=>r.done?`paid off <strong>${MONL[idxToYM(r.v).m]} ${idxToYM(r.v).y}</strong>, about ${fmt0(r.interest)} interest`:'not paid off within 30 years';
-  const a=simDebt({order:'avalanche',extra}),b=simDebt({order:'snowball',extra});
-  let html=`With your scheduled payments${extra?` plus <strong>${fmt0(extra)}/mo extra</strong>`:''}, and each paid-off card's payment rolled onto the next:<div style="margin:4px 0 0">• Avalanche: ${show(a)}</div><div>• Snowball: ${show(b)}</div>`;
-  if(extra){const base=simDebt({order:payoffStrategy,extra:0}),now=payoffStrategy==='snowball'?b:a;
-    if(base.done&&now.done)html+=`<div style="margin-top:4px;color:var(--mute)">Without the extra: ${show(base)}. The extra saves about ${fmt0(Math.max(0,base.interest-now.interest))} in interest${base.v>now.v?` and ${base.v-now.v} month${base.v-now.v===1?'':'s'}`:''}.</div>`;}
-  out.innerHTML=html;
 }
 // Walks the card forward month by month using the same rules as the projection, so
 // planned payments for specific months and balances you've entered all count.
@@ -1999,7 +1883,6 @@ function ccbRecalc(){
     html=`<div style="margin-bottom:6px">${fmt0(totB)} total as of ${mLab} at ${fmt0(totI)}/mo interest:</div>${lines}${strat}${note}`;
   }
   document.getElementById('ccBalSummary').innerHTML=html;
-  renderPlanOut();renderWhatIf();
 }
 let payoffStrategy='avalanche'; // in-memory preference (like view/half) — resets to avalanche on reload
 window.setPayoffStrategy=(s)=>{

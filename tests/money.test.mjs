@@ -1,5 +1,5 @@
 // Tests for the app's money math. They load the real <script> from index.html (no copy
-// of the logic), with a tiny stand-in for the browser. Run: node --test tests/
+// of the logic), with a tiny stand-in for the browser. Run: node --test tests/money.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -11,7 +11,7 @@ function loadApp() {
   js = js.replace(/\nload\(\);\s*$/, '\n'); // don't boot the UI
   js += `\nglobalThis.app={use(d){S=normalize(JSON.parse(JSON.stringify(d)));selIdx=curIdx();return S;},get S(){return S},
     curIdx,mi,ymKey,normalize,incomeFor,paycheckFor,paydaysIn,cardCashPay,cardPaymentTotal,balanceFor,payoffPlan,
-    calItems,paycheckPeriods,evalItem,amountAt,cashOut,simDebt,runningBalance,dayNum,todayNum,isoDayNum,todayISO};`;
+    calItems,paycheckPeriods,evalItem,amountAt,cashOut,runningBalance,dayNum,todayNum,isoDayNum,todayISO};`;
   const el = () => ({ classList: { toggle() {}, add() {}, remove() {} }, style: {}, dataset: {}, value: '', firstChild: {}, addEventListener() {} });
   const ctx = {
     console, setTimeout, clearTimeout, Promise, Date, Math, JSON, Number, String, Object, Array, Set,
@@ -131,29 +131,14 @@ test('calendar shows card payments, not card charges', () => {
   assert.equal(JSON.stringify(names), '["Visa payment"]');
 });
 
-test('rolling a paid-off card onto the next finishes sooner than not', () => {
-  const a = loadApp(); const cur = a.curIdx();
-  a.use(base({ ccBalances: [
-    { id: 'a', name: 'A', apr: 25, payment: 400, balanceMonths: { [a.ymKey(cur)]: 800 } },
-    { id: 'b', name: 'B', apr: 15, payment: 100, balanceMonths: { [a.ymKey(cur)]: 3000 } },
-  ] }));
-  const rolled = a.simDebt({ order: 'avalanche', extra: 0 });
-  const alone = a.payoffPlan(a.S.ccBalances[1], cur, 0);
-  assert.ok(rolled.done);
-  assert.ok(rolled.v < alone.v, `rolled ${rolled.v} vs alone ${alone.v}`);
-});
-
-test('running balance: paychecks in, bills out, paid bills skipped', () => {
+test('running balance: paychecks in, bills out', () => {
   const a = loadApp(); const t = a.todayNum();
   a.use(base({ recurring: [] , checking: { amount: 1000, date: a.todayISO() } }));
   const d = new Date((t + 3) * 86400000);
   a.S.oneoff.push({ id: 'o', name: 'Thing', amount: 250, date: d.toISOString().slice(0, 10), on: true });
-  let rb = a.runningBalance(t + 3);
+  const rb = a.runningBalance(t + 3);
   const paydays = [1, 2, 3].filter(k => { const x = new Date((t + k) * 86400000); return (((Math.round(Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate()) / 86400000) - Math.round(Date.UTC(2026, 8, 4) / 86400000)) % 14) + 14) % 14 === 0; }).length;
   assert.equal(rb.at(t + 3), 1000 - 250 + paydays * a.paycheckFor(a.curIdx()));
-  a.S.paid[`oneoff:o:${d.toISOString().slice(0, 7)}`] = '2026-01-01';
-  rb = a.runningBalance(t + 3);
-  assert.equal(rb.at(t + 3), 1000 + paydays * a.paycheckFor(a.curIdx()));
 });
 
 test('imported data with unsafe ids or odd values is cleaned up', () => {
