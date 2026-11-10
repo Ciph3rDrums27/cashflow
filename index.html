@@ -191,6 +191,10 @@
   .budrow{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-top:8px}
   .budbar{height:6px;border-radius:3px;background:var(--line);margin-top:4px;overflow:hidden}
   .budbar i{display:block;height:100%;background:var(--income)} .budbar i.over{background:var(--gold)}
+  .po-head{font-size:13.5px;margin:6px 0 8px;line-height:1.5}
+  .po{display:grid;font-size:12.5px;overflow-x:auto;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace}
+  .po>span{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  .po>.l{text-align:left;padding-left:0} .po>.h{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);white-space:normal;font-family:inherit}
   .budhint{font-size:12px;color:var(--mute);margin-top:8px}
   .hero-side .dit{padding:5px 0;border-bottom:1px solid var(--line)}
   .hero-side .dit:last-of-type{border-bottom:none}
@@ -235,6 +239,7 @@
     .hero-num{font-size:34px}
     .donutwrap{flex-direction:column;align-items:stretch}
     #donut{align-self:center}
+    .po{font-size:11.5px} .po>span{padding:6px 4px}
     table,thead,tbody,tr,td{display:block}
     thead{display:none}
     tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -853,6 +858,7 @@
         <label>New charges land on<select id="chargeCardSel" title="The card you actually spend on. Its projected balance gets your card spending added each month." onchange="setChargeCard(this.value)"></select></label>
       </div>
       <div class="insight" id="ccBalSummary" style="border-left-color:var(--card)"></div>
+      <div id="payoffProj"></div>
     </div>
   </div>
 
@@ -1895,6 +1901,35 @@ function ccbRecalc(){
     html=`<div style="margin-bottom:6px">${fmt0(totB)} total as of ${mLab} at ${fmt0(totI)}/mo interest:</div>${lines}${strat}${note}`;
   }
   document.getElementById('ccBalSummary').innerHTML=html;
+  renderPayoff();
+}
+// Month-by-month payoff: what you pay and what's left on each card, from this month on.
+function renderPayoff(){
+  const el=document.getElementById('payoffProj');if(!el)return;
+  const cur=curIdx(),cs=(S.ccBalances||[]).filter(c=>balanceFor(c,cur)>0.005);
+  if(!cs.length){el.innerHTML='';return;}
+  const done={},rows=[];let interest=0;
+  for(let v=cur;v<cur+60&&cs.some(c=>done[c.id]==null);v++){
+    let paid=0,total=0;
+    const cells=cs.map(c=>{
+      if(done[c.id]!=null)return '—';
+      const bal=balanceFor(c,v),pay=Math.min(cardCashPay(c,v),bal),after=bal-pay;
+      paid+=pay;
+      if(after<0.005){done[c.id]=v;return '<span class="okt">paid off</span>';}
+      interest+=after*(Number(c.apr)||0)/1200;total+=after;return fmt0(after);
+    });
+    rows.push({v,paid,cells,total});
+  }
+  const stuck=cs.filter(c=>done[c.id]==null),ym=idxToYM(rows[rows.length-1].v),multi=cs.length>1;
+  const head=stuck.length
+    ?`<span class="warnt">Not paid off within 5 years</span> at these payments: ${stuck.map(c=>esc(c.name)).join(', ')}. Raise the payment to see a payoff date.`
+    :`Debt-free after your <strong>${MONL[ym.m]} ${ym.y}</strong> payment — ${rows.length} month${rows.length===1?'':'s'}, about ${fmt0(interest)} in interest.`;
+  const show=rows.slice(0,24),lab=v=>{const t=idxToYM(v);return MON[t.m]+" '"+String(t.y).slice(2);};
+  el.innerHTML=`<div class="hero-lab" style="margin-top:16px">Payoff projection</div><div class="po-head">${head}</div>
+    <div class="po" style="grid-template-columns:auto repeat(${cs.length+(multi?2:1)},1fr)">
+      <span class="h l">Month</span><span class="h">You pay</span>${cs.map(c=>`<span class="h">${esc(c.name)} left</span>`).join('')}${multi?'<span class="h">Total left</span>':''}
+      ${show.map(r=>`<span class="l">${lab(r.v)}</span><span>${fmt0(r.paid)}</span>${r.cells.map(x=>`<span>${x}</span>`).join('')}${multi?`<span><strong>${fmt0(r.total)}</strong></span>`:''}`).join('')}
+    </div>${rows.length>24?`<div class="note-block">+ ${rows.length-24} more months</div>`:''}`;
 }
 let payoffStrategy='avalanche'; // in-memory preference (like view/half) — resets to avalanche on reload
 window.setPayoffStrategy=(s)=>{
