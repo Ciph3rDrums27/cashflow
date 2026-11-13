@@ -2440,11 +2440,29 @@ window.commitEdit=(sect,id)=>{
   }
   editing={sect:null,id:null};editTypeTmp=null;save();render();
 };
-// Deletes an item after asking.
+// Deletes an item after asking. A recurring bill asks which months to remove it from.
 window.del=(sect,id)=>{
   const it=S[sect].find(x=>x.id===id);if(!it)return;
+  if(sect==='recurring'){
+    const ml=MONL[idxToYM(selIdx).m],b=how=>`<button class="btn sm" onclick="delBill('${it.id}','${how}')">`;
+    showModal(`<h2>Remove "${esc(it.name)}"</h2><p class="ph">Which months should it be removed from?</p>
+      <div style="display:flex;flex-direction:column;gap:8px">${b('month')}${ml} only</button>${b('later')}${ml} and every month after</button>${b('all')}Every month (delete it)</button></div>
+      <div class="imp-foot"><span></span><button class="btn sm" onclick="closeModal()">Cancel</button></div>`);
+    return;
+  }
   if(!confirm(`Delete "${it.name}"? This can't be undone.`))return;
   S[sect]=S[sect].filter(x=>x.id!==id);save();render();
+};
+// Carries out the choice made in the remove-a-bill dialog:
+//   month - skip the month being viewed; later - set the bill's last month to the month
+//   before, so earlier months keep it; all - delete the bill completely.
+window.delBill=(id,how)=>{
+  const it=S.recurring.find(x=>x.id===id);if(!it)return;
+  const bk=billVi(it,selIdx);
+  if(how==='month'){if(!it.monthAdj)it.monthAdj={};it.monthAdj[ymKey(bk)]={skip:true};}
+  else if(how==='later')it.end=ymKey(bk-1);
+  else S.recurring=S.recurring.filter(x=>x.id!==id);
+  closeModal();save();render();
 };
 // Settings boxes: paycheck amount, a known payday, take-home for the month being viewed (and
 // its clear button), checking balance and its date. Typing saves after a short pause.
