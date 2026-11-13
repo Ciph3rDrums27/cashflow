@@ -550,6 +550,63 @@ const SEED={
     {name:'Card 2', balance:0,    apr:0,     payment:0},
   ],
 };
+// ========== DEMO MODE ==========
+// Open the app with ?demo=1 to show a made-up household instead of your own data, for
+// screenshots, screen recordings and live demos. In demo mode the app keeps everything in
+// memory only: it never reads or writes your saved data, and closing the tab discards it.
+const DEMO=(()=>{try{return new URLSearchParams(location.search).get('demo')==='1';}catch(e){return false;}})();
+// The demo household. Dates are built from today so the demo always looks current: every
+// number here is invented, rounded, and has nothing to do with anyone's real finances.
+function demoSeed(){
+  const now=new Date(), Y=now.getFullYear(), M=now.getMonth();
+  const iso=(y,m,d)=>new Date(Date.UTC(y,m,Math.min(d,new Date(Date.UTC(y,m+1,0)).getUTCDate()))).toISOString().slice(0,10);
+  const at=(mo,d)=>iso(Y,M+mo,d);                 // a date mo months from now, on day d
+  const ym=mo=>{const t=new Date(Date.UTC(Y,M+mo,1));return t.getUTCFullYear()+'-'+String(t.getUTCMonth()+1).padStart(2,'0');};
+  // Payday: the most recent Friday, every two weeks.
+  const t=new Date(Date.UTC(Y,M,now.getDate())); t.setUTCDate(t.getUTCDate()-((t.getUTCDay()+2)%7));
+  const payAnchor=t.toISOString().slice(0,10);
+  return {
+    paycheck:2450, payAnchor, payEvery:14, payoffStrategy:'avalanche',
+    affirm:[
+      {name:'Laptop (12-mo plan)',   amount:110, date:at(0,8),  left:7},
+      {name:'Camping gear',          amount:65,  date:at(0,22), left:3},
+    ],
+    payin4:[
+      {name:'Concert tickets',       amount:42.50, date:at(0,Math.max(1,now.getDate()-7)), count:4, every:14},
+    ],
+    ccplans:[
+      {name:'Tires (card plan)',     amount:95, date:at(0,19), left:5},
+    ],
+    recurring:[
+      {name:'Rent',                  amount:1650, day:1,  variable:false, months:{}, paidEarly:true},
+      {name:'Car payment',           amount:385,  day:12, variable:false, months:{}},
+      {name:'Car insurance',         amount:140,  day:14, variable:false, months:{}},
+      {name:'Internet',              amount:65,   day:16, variable:false, months:{}},
+      {name:'Electric',              amount:85,   day:21, variable:true,  months:{}},
+      {name:'Phone',                 amount:55,   day:24, variable:true,  months:{}},
+      {name:'Gym',                   amount:40,   day:5,  variable:false, months:{}},
+      {name:'Groceries',             amount:450,  day:null, variable:true, months:{}, spent:{[ym(0)]:Math.round(450*Math.min(1,now.getDate()/30)*0.9)}},
+      {name:'Gas',                   amount:160,  day:null, variable:true, months:{}, spent:{[ym(0)]:Math.round(160*Math.min(1,now.getDate()/30)*1.1)}},
+      {name:'Dining & fun',          amount:300,  day:null, variable:true, months:{}, spent:{[ym(0)]:Math.round(300*Math.min(1,now.getDate()/30))}},
+      {name:'Student loan',          amount:180,  day:1,  variable:false, months:{}, start:ym(2)},
+    ],
+    oneoff:[
+      {name:'Annual vehicle registration', amount:210, date:at(1,10)},
+    ],
+    card:[
+      {name:'Music streaming',       amount:12, date:at(0,9),  left:'', kind:'recur'},
+      {name:'Cloud storage',         amount:3,  date:at(0,11), left:'', kind:'recur'},
+      {name:'Trail running shoes',   amount:140, date:at(0,13), left:1, kind:'once'},
+    ],
+    ccBalances:[
+      {id:'demoA', name:'Rewards Visa', apr:24.99, payment:350, dueDay:18, balanceMonths:{[ym(0)]:2400}},
+      {id:'demoB', name:'Store card',   apr:29.99, payment:120, dueDay:6,  balanceMonths:{[ym(0)]:600}},
+    ],
+    chargeCardId:'demoA',
+    checking:{amount:3200, date:at(0,now.getDate())},
+    lastExport:at(0,now.getDate()),
+  };
+}
 // Bills added automatically when upgrading very old saved data (see migrateV2).
 const VAR_DEFAULTS=['Energy','Phone','Groceries','Gas'];
 
@@ -746,13 +803,18 @@ function migrateV2(s){ // v2 had no ccplans and possibly no variable fields
 // The browser's storage, or null if the browser won't allow it (some private windows).
 const LS=(()=>{try{if(typeof window!=='undefined'&&window.localStorage){window.localStorage.getItem('__probe');return window.localStorage;}}catch(e){}return null;})();
 // Reads and writes saved data by name.
+// In demo mode reads and writes go to this in-memory map instead, so your saved data is
+// never read, overwritten or mixed with the sample household.
+const MEM=new Map();
 const store={
   async get(k){
+    if(DEMO)return MEM.has(k)?{key:k,value:MEM.get(k)}:null;
     try{if(typeof window!=='undefined'&&window.storage&&window.storage.get)return await window.storage.get(k);}catch(e){}
     if(LS){const v=LS.getItem(k);return v==null?null:{key:k,value:v};}
     return null;
   },
   async set(k,v){
+    if(DEMO){MEM.set(k,v);return {key:k,value:v};}
     try{if(typeof window!=='undefined'&&window.storage&&window.storage.set)return await window.storage.set(k,v);}catch(e){}
     if(LS){LS.setItem(k,v);return {key:k,value:v};}
     return null;
@@ -765,7 +827,8 @@ let LOAD_NOTE='';
 // data), cleans it, saves it back, and draws the tab you were last on.
 async function load(){
   let raw=null;S=null;
-  try{const r=await store.get(KEY); if(r&&r.value){raw=r.value;S=JSON.parse(raw);}}catch(e){S=null;}
+  if(DEMO)S=demoSeed();
+  else try{const r=await store.get(KEY); if(r&&r.value){raw=r.value;S=JSON.parse(raw);}}catch(e){S=null;}
   if(raw&&(!S||typeof S!=='object')){
     // Saved data exists but can't be read. Keep an untouched copy before anything is written.
     S=null;
@@ -782,10 +845,11 @@ async function load(){
   S=normalize(S);
   payoffStrategy=S.payoffStrategy;
   await save(true);
-  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
+  if(!DEMO)try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
   selIdx=curIdx();
-  try{const v=localStorage.getItem('cashflow:view');if(VIEWS.includes(v))view=v;}catch(e){}
+  if(!DEMO)try{const v=localStorage.getItem('cashflow:view');if(VIEWS.includes(v))view=v;}catch(e){}
   setView(view);
+  if(DEMO){document.title='Cashflow (demo)';showBanner('Demo mode: sample data only. Nothing you do here is saved. <a href="'+esc(location.pathname)+'" style="color:inherit;text-decoration:underline">Exit demo</a>','');}
   if(LOAD_NOTE){showBanner(LOAD_NOTE,'warn');LOAD_NOTE='';}
 }
 // ========== CREDIT CARD MATHS ==========
@@ -1017,7 +1081,7 @@ window.setView=v=>{
   view=v;
   document.querySelectorAll('#viewsw button').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
   VIEWS.forEach(x=>document.getElementById(x+'View').classList.toggle('active',x===v));
-  try{localStorage.setItem('cashflow:view',v);}catch(e){}
+  if(!DEMO)try{localStorage.setItem('cashflow:view',v);}catch(e){}
   render();
 };
 // Fills in the checking balance, the last backup date and the "undo last import" button in
