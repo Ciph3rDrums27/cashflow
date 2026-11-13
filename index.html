@@ -2289,8 +2289,9 @@ function rowHTML(sect,it){
 }
 // The pause, edit and delete buttons at the end of a row.
 function actions(sect,it){
-  const off=it.on===false;
-  const toggle=`<button class="icon-btn" title="${off?'Turn on':'Turn off'}" onclick="toggleOn('${sect}','${it.id}')">${off?'○':'◉'}</button>`;
+  const adj=sect==='recurring'&&it.monthAdj&&it.monthAdj[ymKey(billVi(it,selIdx))];
+  const off=it.on===false||!!(adj&&adj.skip);
+  const toggle=`<button class="icon-btn" title="${off?'Turn on':sect==='recurring'?'Turn off for this month':'Turn off'}" onclick="toggleOn('${sect}','${it.id}')">${off?'○':'◉'}</button>`;
   return `<td style="text-align:right;white-space:nowrap">${toggle}<button class="icon-btn" onclick="startEdit('${sect}','${it.id}')">✎</button><button class="icon-btn" onclick="del('${sect}','${it.id}')">🗑</button></td>`;
 }
 
@@ -2378,7 +2379,19 @@ window.addItem=sect=>{
 };
 // Start editing a row; pause or resume an item; cancel an edit.
 window.startEdit=(sect,id)=>{editing={sect,id};editTypeTmp=null;renderSections();};
-window.toggleOn=(sect,id)=>{const it=S[sect].find(x=>x.id===id);if(!it)return;it.on=it.on===false?true:false;save();render();};
+// A recurring bill is turned off for the month you are viewing only (the same as "Skip"
+// in the edit form); other months are untouched. Other kinds of item pause everywhere.
+// A bill paused everywhere by an older version is switched back on first.
+window.toggleOn=(sect,id)=>{
+  const it=S[sect].find(x=>x.id===id);if(!it)return;
+  if(sect!=='recurring'||it.on===false)it.on=it.on===false;
+  else{
+    const k=ymKey(billVi(it,selIdx));
+    if(!it.monthAdj)it.monthAdj={};
+    if(it.monthAdj[k]&&it.monthAdj[k].skip)delete it.monthAdj[k];else it.monthAdj[k]={skip:true};
+  }
+  save();render();
+};
 window.cancelEdit=()=>{editing={sect:null,id:null};editTypeTmp=null;renderSections();};
 // Saves an edited row. For a recurring bill this also handles: paid from the previous month's
 // last paycheck, an amount change from this month on or for every month, a last month, skip or
