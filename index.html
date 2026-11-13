@@ -1,6 +1,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0c0e1a">
+<!-- Security policy for when the app is opened as a local file or hosted somewhere that
+     sends no security headers. It is a subset of what cashflow.travisbradford.com already
+     sends: the page may not send data anywhere (connect-src), load plugins, change its base
+     address, or post forms. -->
+<meta http-equiv="Content-Security-Policy" content="connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Cashflow Forecast</title>
@@ -1588,10 +1593,10 @@ function renderCardBalances(){
     return `<div class="ccbrow">
     <div><span class="lab">Card</span><input value="${esc(c.name)}" oninput="ccbInput('${c.id}','name',this.value)"></div>
     <div><span class="lab" style="cursor:help" title="${balTitle}">Balance $ <span class="btag${isAct?' act':''}" id="ccbtag_${c.id}">${isAct?'actual':'proj'}</span></span><input class="mono" type="number" inputmode="decimal" value="${bal?Math.round(bal*100)/100:''}" placeholder="0" title="${balTitle}" oninput="ccbBalInput('${c.id}',this.value)"></div>
-    <div><span class="lab">APR %</span><input class="mono" type="number" inputmode="decimal" value="${c.apr||''}" placeholder="0" oninput="ccbInput('${c.id}','apr',this.value)"></div>
-    <div><span class="lab" style="cursor:help" title="Day of the month this card's payment is due. Places the payment on the Calendar and in paycheck coverage.">Due day</span><input class="mono" type="number" inputmode="numeric" min="1" max="31" value="${c.dueDay||''}" placeholder="—" title="Day of the month this card's payment is due" oninput="ccbInput('${c.id}','dueDay',this.value)"></div>
-    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Your normal monthly payment to this card. Used every month by default, and stops once the card is paid off.">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${c.payment||''}" placeholder="0" title="Your normal monthly payment to this card. Used every month by default, and stops once the card is paid off." oninput="ccbInput('${c.id}','payment',this.value)"></div>
-    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Counted in the payoff estimate.">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${hasOv?c.payMonths[key]:''}" placeholder="${c.payment||0}" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Counted in the payoff estimate." oninput="ccbMonthInput('${c.id}',this.value)"></div>
+    <div><span class="lab">APR %</span><input class="mono" type="number" inputmode="decimal" value="${esc(c.apr||'')}" placeholder="0" oninput="ccbInput('${c.id}','apr',this.value)"></div>
+    <div><span class="lab" style="cursor:help" title="Day of the month this card's payment is due. Places the payment on the Calendar and in paycheck coverage.">Due day</span><input class="mono" type="number" inputmode="numeric" min="1" max="31" value="${esc(c.dueDay||'')}" placeholder="—" title="Day of the month this card's payment is due" oninput="ccbInput('${c.id}','dueDay',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Your normal monthly payment to this card. Used every month by default, and stops once the card is paid off.">Payment $/mo</span><input class="mono" type="number" inputmode="decimal" value="${esc(c.payment||'')}" placeholder="0" title="Your normal monthly payment to this card. Used every month by default, and stops once the card is paid off." oninput="ccbInput('${c.id}','payment',this.value)"></div>
+    <div><span class="lab" style="color:var(--ccplan);cursor:help" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Counted in the payoff estimate.">${esc(mLabel)} $/mo</span><input class="mono" type="number" inputmode="decimal" value="${esc(hasOv?c.payMonths[key]:'')}" placeholder="${c.payment||0}" title="Optional override for ${esc(mLabel)} only. Leave blank to use your normal payment (${fmt0(c.payment||0)}). Counted in the payoff estimate." oninput="ccbMonthInput('${c.id}',this.value)"></div>
     <div><span class="lab" style="color:var(--income);cursor:help" title="What's left on this card once ${esc(mLabel)}'s payment goes through. This is the figure next month builds on.">After pay</span><span class="intv" id="ccbafter_${c.id}" style="color:var(--income)">$0.00</span></div>
     <div><span class="lab">Interest/mo</span><span class="intv" id="ccbint_${c.id}">$0.00</span></div>
     <div style="text-align:right"><button class="icon-btn" title="remove" onclick="ccbDel('${c.id}')">🗑</button></div>
@@ -1887,27 +1892,27 @@ function editRowHTML(sect,it){
     const m=MON[idxToYM(selIdx).m],key=ymKey(billVi(it,selIdx)),adj=it.monthAdj&&it.monthAdj[key];
     const typeSel=`<td class="editcell"><select id="ed_type" onchange="setEditType(this.value)"><option value="fixed" ${!varies?'selected':''}>Fixed</option><option value="varies" ${varies?'selected':''}>Varies</option></select></td>`;
     const amtCell=varies
-      ?`<td class="editcell"><div style="display:flex;gap:5px"><input id="ed_est" class="mono" type="number" value="${amountAt(it,billVi(it,selIdx))||''}" placeholder="est/mo" title="estimate"><input id="ed_actual" class="mono" type="number" value="${(it.months&&it.months[key]!=null)?it.months[key]:''}" placeholder="${m} actual" title="actual for ${m}"></div></td>`
+      ?`<td class="editcell"><div style="display:flex;gap:5px"><input id="ed_est" class="mono" type="number" value="${amountAt(it,billVi(it,selIdx))||''}" placeholder="est/mo" title="estimate"><input id="ed_actual" class="mono" type="number" value="${esc((it.months&&it.months[key]!=null)?it.months[key]:'')}" placeholder="${m} actual" title="actual for ${m}"></div></td>`
       :`<td class="editcell"><input id="ed_amt" class="mono" type="number" value="${amountAt(it,billVi(it,selIdx))||''}"></td>`;
-    return `<tr>${nameI}<td class="editcell"><input id="ed_day" type="number" min="1" max="31" value="${it.day||''}"></td>${typeSel}${amtCell}${act}</tr>
-      <tr><td colspan="5" class="editcell"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--mute)"><select id="ed_adj" style="width:auto" onchange="document.getElementById('ed_adjday').disabled=this.value!=='move'"><option value="" ${!adj?'selected':''}>Normal</option><option value="skip" ${adj&&adj.skip?'selected':''}>Skip</option><option value="move" ${adj&&adj.day?'selected':''}>Moved to day</option></select><input id="ed_adjday" class="mono" type="number" min="1" max="31" style="width:70px" placeholder="day" value="${adj&&adj.day?adj.day:''}" ${adj&&adj.day?'':'disabled'}><label style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;cursor:pointer"><input id="ed_early" type="checkbox" style="width:auto;accent-color:var(--gold)" ${it.paidEarly?'checked':''}>Paid from the previous month's last paycheck</label></div>
-      <div class="edrow2"><label>Amount change applies<select id="ed_scope" style="width:auto"><option value="from" selected>from ${MON[idxToYM(billVi(it,selIdx)).m]} ${idxToYM(billVi(it,selIdx)).y} on</option><option value="all">to every month</option></select></label><label>Last month<input id="ed_end" type="month" style="width:auto" value="${it.end||''}" title="Leave blank if it doesn't end"></label></div></td></tr>`;
+    return `<tr>${nameI}<td class="editcell"><input id="ed_day" type="number" min="1" max="31" value="${esc(it.day||'')}"></td>${typeSel}${amtCell}${act}</tr>
+      <tr><td colspan="5" class="editcell"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--mute)"><select id="ed_adj" style="width:auto" onchange="document.getElementById('ed_adjday').disabled=this.value!=='move'"><option value="" ${!adj?'selected':''}>Normal</option><option value="skip" ${adj&&adj.skip?'selected':''}>Skip</option><option value="move" ${adj&&adj.day?'selected':''}>Moved to day</option></select><input id="ed_adjday" class="mono" type="number" min="1" max="31" style="width:70px" placeholder="day" value="${esc(adj&&adj.day?adj.day:'')}" ${adj&&adj.day?'':'disabled'}><label style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;cursor:pointer"><input id="ed_early" type="checkbox" style="width:auto;accent-color:var(--gold)" ${it.paidEarly?'checked':''}>Paid from the previous month's last paycheck</label></div>
+      <div class="edrow2"><label>Amount change applies<select id="ed_scope" style="width:auto"><option value="from" selected>from ${MON[idxToYM(billVi(it,selIdx)).m]} ${idxToYM(billVi(it,selIdx)).y} on</option><option value="all">to every month</option></select></label><label>Last month<input id="ed_end" type="month" style="width:auto" value="${esc(it.end||'')}" title="Leave blank if it doesn't end"></label></div></td></tr>`;
   }
   if(sect==='payin4'){
     const every=Number(it.every)||7;
     const freqSel=`<td class="editcell"><select id="ed_p4freq"><option value="7" ${every===7?'selected':''}>Weekly</option><option value="14" ${every===14?'selected':''}>Every 2 wks</option></select></td>`;
-    return `<tr>${nameI}<td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${it.date||''}" value="${dispDate(it.date)}" placeholder="7/23" title="first payment"></td>${freqSel}<td class="editcell"><input id="ed_amt" class="mono" type="number" value="${it.amount||''}" title="$ per payment"></td>${act}</tr>`;
+    return `<tr>${nameI}<td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${esc(it.date||'')}" value="${esc(dispDate(it.date))}" placeholder="7/23" title="first payment"></td>${freqSel}<td class="editcell"><input id="ed_amt" class="mono" type="number" value="${esc(it.amount||'')}" title="$ per payment"></td>${act}</tr>`;
   }
   if(sect==='card'){
     const kind=(it.kind==='once'||(it.kind==null&&Number(it.left)===1))?'once':'recur';
     const kindSel=`<td class="editcell"><select id="ed_cardkind"><option value="recur" ${kind!=='once'?'selected':''}>Recurring</option><option value="once" ${kind==='once'?'selected':''}>One-time</option></select></td>`;
-    return `<tr>${nameI}<td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${it.date||''}" value="${dispDate(it.date)}" placeholder="7/23"></td>${kindSel}<td class="editcell"><input id="ed_amt" class="mono" type="number" value="${it.amount||''}"></td>${act}</tr>`;
+    return `<tr>${nameI}<td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${esc(it.date||'')}" value="${esc(dispDate(it.date))}" placeholder="7/23"></td>${kindSel}<td class="editcell"><input id="ed_amt" class="mono" type="number" value="${esc(it.amount||'')}"></td>${act}</tr>`;
   }
   if(sect==='oneoff'){
-    return `<tr>${nameI}<td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${it.date||''}" value="${dispDate(it.date)}" placeholder="7/23"></td><td class="editcell" style="color:var(--faint);font-size:11px">one-time</td><td class="editcell"><input id="ed_amt" class="mono" type="number" value="${it.amount||''}"></td>${act}</tr>`;
+    return `<tr>${nameI}<td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${esc(it.date||'')}" value="${esc(dispDate(it.date))}" placeholder="7/23"></td><td class="editcell" style="color:var(--faint);font-size:11px">one-time</td><td class="editcell"><input id="ed_amt" class="mono" type="number" value="${esc(it.amount||'')}"></td>${act}</tr>`;
   }
   const leftPh=sect==='payin4'?'4':'# payments';
-  return `<tr>${nameI}<td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${it.date||''}" value="${dispDate(it.date)}" placeholder="7/23"></td><td class="editcell"><input id="ed_left" type="number" min="0" placeholder="${leftPh}" value="${it.left??''}"></td><td class="editcell"><input id="ed_amt" class="mono" type="number" value="${it.amount||''}"></td>${act}</tr>`;
+  return `<tr>${nameI}<td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${esc(it.date||'')}" value="${esc(dispDate(it.date))}" placeholder="7/23"></td><td class="editcell"><input id="ed_left" type="number" min="0" placeholder="${leftPh}" value="${esc(it.left??'')}"></td><td class="editcell"><input id="ed_amt" class="mono" type="number" value="${esc(it.amount||'')}"></td>${act}</tr>`;
 }
 
 // Builds the "add" form for a list, if it is open.
@@ -1924,7 +1929,10 @@ function addFormHTML(sect){
 
 // Makes text safe to put on the page, so a name containing < or " can't be read as code. Names
 // shown on screen go through this.
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Makes text safe to put inside HTML, including inside a quoted attribute. Every value that
+// comes from saved data, an imported file or something typed must go through this (or
+// through fmt/fmt0, which only ever produce numbers) before it reaches innerHTML.
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // Next payment date (today or later) for something billed monthly from its start date.
 function nextDue(it){
   const st=parseStart(it.date);if(st==null)return null;
@@ -2095,6 +2103,14 @@ function doExport(){
 window.doExport=doExport;
 document.getElementById('exportBtn').onclick=doExport;
 document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+// The largest file either import will read. A real backup or statement is far smaller; the
+// cap stops a huge or wrong file from freezing the page.
+const MAX_IMPORT_BYTES=10*1024*1024;
+function tooBig(f){
+  if(f.size<=MAX_IMPORT_BYTES)return false;
+  showModal(`<h2>That file is too large</h2><p class="ph">${esc(f.name)} is over 10 MB, so it was not opened. Nothing was changed.</p><div class="imp-foot"><span></span><button class="btn" onclick="closeModal()">OK</button></div>`);
+  return true;
+}
 // Where the data from just before an import is kept, so the import can be undone.
 const PREV_KEY=KEY+':before-import';
 // A backup file that has been read but not yet confirmed.
@@ -2105,6 +2121,7 @@ function dataSummary(o){const n=k=>Array.isArray(o[k])?o[k].length:0;return `${n
 // and ask before replacing anything.
 document.getElementById('importFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
+  if(tooBig(f)){e.target.value='';return;}
   const rd=new FileReader();
   rd.onload=()=>{
     let obj=null;try{obj=JSON.parse(rd.result);}catch(err){}
@@ -2189,7 +2206,8 @@ const DEST_GUESS=[
 function everydayBills(){return (S.recurring||[]).filter(it=>it.variable&&it.day==null);}
 // Picks where one imported purchase goes, using the rules described above.
 function guessDest(name){
-  const m=S.merchantMap[name];
+  // hasOwn: a merchant called "constructor" or "__proto__" must not match built-in properties.
+  const m=Object.prototype.hasOwnProperty.call(S.merchantMap,name)?S.merchantMap[name]:undefined;
   if(m==='oneoff')return 'oneoff';
   if(m&&everydayBills().some(it=>it.id===m))return m;
   for(const [re,bill] of DEST_GUESS){if(re.test(name)){const it=everydayBills().find(x=>bill.test(x.name));if(it)return it.id;}}
@@ -2222,7 +2240,7 @@ function parseChaseCSV(text){
     if(type==='LOAN_PMT'){group='skip';why='autopay — likely your Pay in 4 section';}
     else if(type==='ACH_DEBIT'){group='skip';why='autopay/bill — likely Recurring or Installments';}
     const name=cleanDesc(r[ix.desc]),key=date+'|'+amount.toFixed(2)+'|'+name;
-    const dup=existing.has(date+'|'+amount.toFixed(2))||!!S.imported[key];
+    const dup=existing.has(date+'|'+amount.toFixed(2))||Object.prototype.hasOwnProperty.call(S.imported,key);
     txns.push({date,name,key,amount,group,dest:guessDest(name),why:dup?'already imported or a similar entry exists':why,sel:group==='buy'&&!dup});
   }
   txns.sort((a,b)=>a.group===b.group?(a.date<b.date?1:-1):(a.group==='buy'?-1:1));
@@ -2274,6 +2292,7 @@ window.impCommit=()=>{
 document.getElementById('stmtBtn').onclick=()=>document.getElementById('stmtFile').click();
 document.getElementById('stmtFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
+  if(tooBig(f)){e.target.value='';return;}
   const rd=new FileReader();
   rd.onload=()=>{const res=parseChaseCSV(rd.result);if(!res||!res.txns.length){showModal('<h2>No transactions found</h2><p class="ph">Make sure this is a Chase account-activity CSV download. Nothing was changed.</p><div class="imp-foot"><span></span><button class="btn" onclick="closeModal()">OK</button></div>');return;}IMP=res;impRender();};
   rd.readAsText(f);e.target.value='';

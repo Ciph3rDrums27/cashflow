@@ -1,0 +1,25 @@
+# Runs the tests (money maths, demo mode, security guardrails) on every pull request and on
+# every push to main, so a change that breaks a guardrail is visible before it is merged.
+# This workflow has no access to AWS and cannot deploy anything.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Run tests
+        run: node --test tests/*.test.mjs
