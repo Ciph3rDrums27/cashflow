@@ -9,7 +9,7 @@
 <style>
   :root{
     --bg:#0c0e1a;--panel:#1a1f2e;--panel2:#232a3d;--line:#333c52;
-    --ink:#eef1f7;--mute:#9aa3b8;--faint:#7a8298;
+    --ink:#eef1f7;--mute:#a6aec2;--faint:#8b93a8;
     --affirm:#8b6fd9;--ccplan:#2fa89c;--recur:#4a8fe0;--card:#c96a2e;--income:#3fae6a;--gold:#e3a83f;--pay4:#b8862e;--oneoff:#d9628f;
   }
   *{box-sizing:border-box}
@@ -220,7 +220,8 @@
   .imp-row select{font-size:12px;padding:4px 6px;max-width:150px;flex:0 0 auto}
   input.invalid{border-color:var(--card)}
   @media(max-width:640px){
-    .wrap{padding:16px 14px 32px}
+    /* Extra room at the top and bottom of the phone screen leaves a clear view of the photo. */
+    .wrap{padding:112px 14px 150px}
     h1{font-size:23px}
     .sub{display:none}
     header.top{gap:10px;padding-bottom:12px;margin-bottom:14px}
@@ -270,13 +271,21 @@
      address bar hides or shows. The ::after layer darkens the photo (more at the top, where
      the title sits straight on it) so light text stays readable. */
   #bgscene{position:fixed;left:0;top:0;width:100%;height:100vh;height:100lvh;z-index:-1;pointer-events:none;background:var(--bg) url(bg-wide.jpg) center/cover no-repeat}
-  #bgscene::after{content:'';position:absolute;inset:0;background:linear-gradient(rgba(8,10,20,.72),rgba(8,10,20,.42) 28%,rgba(8,10,20,.5))}
+  #bgscene::after{content:'';position:absolute;inset:0;background:linear-gradient(rgba(8,10,20,.5),rgba(8,10,20,.1) 30%,rgba(8,10,20,.22))}
   @media(max-width:640px),(orientation:portrait){#bgscene{background-image:url(bg-tall.jpg)}}
+  /* The title, month and their buttons sit straight on the photo, so they get a soft
+     shadow and brighter small print to stay readable now the photo is less darkened. */
+  header.top{border-bottom-color:rgba(255,255,255,.22);text-shadow:0 1px 3px rgba(0,0,0,.75),0 0 14px rgba(0,0,0,.45)}
+  header.top .sub,header.top .mlabel small{color:#e3e7f0}
+  header.top .today-btn{background:rgba(16,20,34,.5);color:var(--ink);border-color:rgba(255,255,255,.22)}
+  header.top .nbtn{background:rgba(16,20,34,.5);border-color:rgba(255,255,255,.22)}
+  header.top .btn{text-shadow:none}
+  #calMonthLbl{color:#e3e7f0;text-shadow:0 1px 3px rgba(0,0,0,.75)}
   /* Frosted glass: boxes are slightly see-through and blur the scene behind them, so the
      photo shows through instead of only peeking out between boxes. Browsers
      without blur support keep the solid boxes above. */
   @supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
-    .panel,.card,.viewsw{background:rgba(22,27,42,.66);-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);border-color:rgba(255,255,255,.09);box-shadow:0 8px 28px rgba(0,0,0,.28)}
+    .panel,.card,.viewsw{background:rgba(16,20,34,.6);-webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5);border-color:rgba(255,255,255,.14);box-shadow:0 8px 28px rgba(0,0,0,.3)}
   }
 </style>
 
