@@ -32,6 +32,7 @@ Fragmented autopay dates across many creditors make the cumulative monthly outfl
 - **Credit cards:** per-month balances and payments, due days on the calendar, payoff dates that follow your planned payments, payments that stop once a card is paid off.
 - **Bank statement import (Chase CSV):** send purchases to Groceries, Gas, etc. so they count toward that month instead of on top of the estimate. The app remembers each merchant and skips rows it has already imported.
 - **Backups:** dated exports, a reminder when it's been a while, a preview before an import replaces anything, and one-click undo of the last import.
+- **Demo mode:** add `?demo=1` to the URL to show a made-up household for screenshots and live demos. Demo mode keeps everything in memory, never reads or writes your saved data, and its dates follow today so it always looks current.
 - **Works offline** once installed from the hosted site (Add to Home Screen on iPhone).
 
 ## Privacy & security model
@@ -83,7 +84,7 @@ To use it on a phone while keeping everything local (no public hosting), serve `
 
 ## Tests
 
-The money math (payments, payoff, paycheck coverage, running balance, carry-forward income) has tests that run against the real code in `index.html`:
+Demo mode has its own tests proving it never touches saved data. The money math (payments, payoff, paycheck coverage, running balance, carry-forward income) has tests that run against the real code in `index.html`:
 
 ```bash
 node --test tests/*.test.mjs
