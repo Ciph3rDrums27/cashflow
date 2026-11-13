@@ -155,17 +155,21 @@
   .pcp .pcnx{font-size:11.5px;color:var(--gold);margin-left:6px}
   .pcp .pcft{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px}
   .pcp .pcft .neg{color:var(--card)}
+  /* On a narrow screen the two halves go on separate lines instead of breaking mid-phrase. */
+  .pcp .pcft{flex-wrap:wrap} .pcp .pcft span{white-space:nowrap} .pcp .pcft span:last-child{margin-left:auto}
   .pcp .pcempty{font-size:12.5px;color:var(--faint);padding:3px 0}
   .anytime{display:flex;flex-wrap:wrap;gap:10px}
   .chip{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
   .chip .pd{width:8px;height:8px;border-radius:3px}
   .chip .nm{font-size:13px}
   .chip .vl{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--mute)}
-  .ccbrow{display:grid;grid-template-columns:1fr .68fr .45fr .42fr .62fr .62fr .68fr .62fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+  .ccbrow{display:grid;grid-template-columns:1fr .68fr .45fr .42fr .62fr .62fr .68fr .62fr auto;gap:8px;align-items:start;padding:9px 0;border-bottom:1px solid var(--line)}
+  /* Every column starts at the same height so the small labels line up; the delete button sits level with the boxes. */
+  .ccbrow>div:last-child{align-self:end}
   .ccbrow:last-of-type{border-bottom:none}
   .ccbrow .lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);display:block;margin-bottom:3px}
   .ccbrow input{width:100%}
-  .ccbrow .intv{font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--card)}
+  .ccbrow .intv{display:block;padding-top:8px;font-family:ui-monospace,'SF Mono',Menlo,Monaco,monospace;font-size:13px;color:var(--card)}
   .ccbrow .btag{font-size:9px;letter-spacing:.3px;color:var(--faint);border:1px solid var(--line);border-radius:20px;padding:0 5px;text-transform:none}
   .ccbrow .btag.act{color:var(--income);border-color:rgba(63,174,106,.45)}
   @media(max-width:760px){.ccbrow{grid-template-columns:1fr 1fr 1fr}.ccbrow>div:last-child{grid-column:1/-1;text-align:right;margin-top:2px}}
@@ -216,16 +220,17 @@
   .imp-row select{font-size:12px;padding:4px 6px;max-width:150px;flex:0 0 auto}
   input.invalid{border-color:var(--card)}
   @media(max-width:640px){
-    .wrap{padding:16px 14px 80px}
+    .wrap{padding:16px 14px 32px}
     h1{font-size:23px}
     .sub{display:none}
     header.top{gap:10px;padding-bottom:12px;margin-bottom:14px}
     .navmonth{width:100%;gap:8px}
     .navmonth .mlabel{min-width:0;flex:1;font-size:18px;white-space:nowrap}
-    .saved{position:absolute;right:0;top:6px}
-    .logbtn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.5);border-radius:24px;padding:12px 20px;font-size:15px;margin:0}
+    .saved{position:absolute;right:88px;top:12px}
+    /* + Log sits at the top right, beside the title, so it never covers the page. */
+    .btn.logbtn{position:absolute;right:0;top:-7px;margin:0;padding:6px 14px;min-height:36px}
     .nbtn{width:44px;height:44px}
-    .today-btn,.logbtn{min-height:44px}
+    .today-btn{min-height:44px}
     input,select{font-size:16px}
     .btn,.btn.sm{min-height:42px;font-size:14px}
     .icon-btn{min-width:40px;min-height:40px;font-size:16px}
@@ -260,7 +265,15 @@
     .sechead .sectot{font-size:12px}
     .seg button{padding:10px 14px}
   }
-  #bgscene{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+  /* The night-sky scene sits behind everything. 100lvh keeps it from jumping on iPhone
+     when Safari's address bar hides or shows. */
+  #bgscene{position:fixed;left:0;top:0;width:100%;height:100vh;height:100lvh;z-index:-1;pointer-events:none}
+  /* Frosted glass: boxes are slightly see-through and blur the scene behind them, so the
+     sky and mountains glow through instead of only peeking out between boxes. Browsers
+     without blur support keep the solid boxes above. */
+  @supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+    .panel,.card,.viewsw{background:rgba(22,27,42,.66);-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);border-color:rgba(255,255,255,.09);box-shadow:0 8px 28px rgba(0,0,0,.28)}
+  }
 </style>
 
 <svg id="bgscene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
