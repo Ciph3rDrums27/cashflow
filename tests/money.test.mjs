@@ -104,6 +104,22 @@ test('skipping a month removes only that month', () => {
   assert.equal(a.evalItem(it, 'recurring', a.mi(2026, 11)).amt, 200);
 });
 
+test('turning an installment or card charge off for one month leaves other months alone', () => {
+  const a = loadApp();
+  const adj = { monthAdj: { '2026-12': { skip: true } } };
+  a.use(base({
+    affirm: [{ id: 'i', name: 'Loan', amount: 50, date: '2026-10-05', left: 6, ...adj }],
+    card: [{ id: 'c', name: 'Sub', amount: 10, date: '2026-10-05', left: '', kind: 'recur', ...adj, end: '2027-02' }],
+  }));
+  for (const [sect, amt] of [['affirm', 50], ['card', 10]]) {
+    const it = a.S[sect][0];
+    assert.equal(a.evalItem(it, sect, a.mi(2026, 10)).amt, amt);
+    assert.equal(a.evalItem(it, sect, a.mi(2026, 11)).amt, 0);
+    assert.equal(a.evalItem(it, sect, a.mi(2027, 0)).amt, amt);
+  }
+  assert.equal(a.evalItem(a.S.card[0], 'card', a.mi(2027, 2)).amt, 0); // removed from March on
+});
+
 test('an amount change from a month on leaves earlier months alone, and an end month stops it', () => {
   const a = loadApp();
   a.use(base({ recurring: [{ id: 'x', name: 'Lease', amount: 700, day: 22, amountFrom: { '2027-01': 750 }, end: '2027-06' }] }));

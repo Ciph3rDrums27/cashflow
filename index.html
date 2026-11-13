@@ -1410,6 +1410,13 @@ function amountAt(it,vi){let a=Number(it.amount)||0;const ch=it.amountFrom||{};O
 //                    payments as are left; with no count, every month from the start
 function evalItem(it,sect,vi){
   if(it.on===false)return {amt:0,active:false,status:'off'};
+  // Turned off for this month only, or removed from a month onwards. (Recurring bills
+  // do the same checks further down, because a bill paid ahead belongs to the next month.)
+  if(sect!=='recurring'){
+    if(isSkipped(it,sect,vi))return {amt:0,active:false,status:'skipped'};
+    const en=monthStartIdx(it.end);
+    if(en!=null&&vi>en)return {amt:0,active:false,status:'done'};
+  }
   const mode=SECT[sect].mode;
   if(mode==='payin4'){
     const dates=payin4Dates(it);
@@ -1461,6 +1468,12 @@ function evalItem(it,sect,vi){
   if(vi<=start+left-1)return {amt,active:true,status:'on',leftAt:left-(vi-start)};
   return {amt:0,active:false,status:'done'};
 }
+// Turning an item off for one month is saved on the item as monthAdj['2026-11']={skip:true}.
+// skipKey is the month that entry is filed under; isSkipped says whether it is set.
+function skipKey(it,sect,vi){return ymKey(sect==='recurring'?billVi(it,vi):vi);}
+function isSkipped(it,sect,vi){const a=it.monthAdj&&it.monthAdj[skipKey(it,sect,vi)];return !!(a&&a.skip);}
+// True for an item that only happens once, so "this month only" has no meaning for it.
+function isOneTime(it,sect){return sect==='oneoff'||(sect==='card'&&(it.kind==='once'||(it.kind==null&&Number(it.left)===1)));}
 // Total for one list in a month.
 function sectionSum(sect,vi){return S[sect].reduce((s,it)=>s+evalItem(it,sect,vi).amt,0);}
 
@@ -1554,6 +1567,7 @@ function calItems(vi){
   SECTKEYS.filter(sect=>sect!=='ccplans'&&sect!=='card').forEach(sect=>{(S[sect]||[]).forEach(it=>{
     if(it.on===false)return;
     if(SECT[sect].mode==='payin4'){
+      if(evalItem(it,sect,vi).status!=='on')return;
       payin4Dates(it).forEach(dt=>{if(dt.getFullYear()===y&&dt.getMonth()===m)out.push({sect,id:it.id,name:it.name,amount:Number(it.amount)||0,day:dt.getDate(),variable:false,est:false});});
       return;
     }
@@ -2240,7 +2254,10 @@ function emptyMsg(sect){
 function rowHTML(sect,it){
   if(editing.sect===sect&&editing.id===it.id)return editRowHTML(sect,it);
   const ev=evalItem(it,sect,selIdx);
-  const off=it.on===false;
+  // "off" covers both paused everywhere and turned off for just this month. (A recurring
+  // bill turned off for the month shows its own "skipped" tag below.)
+  const skip=sect!=='recurring'&&ev.status==='skipped',off=it.on===false||skip;
+  const offWord=skip?'skipped':'paused',offPill='<span class="leftpill">'+offWord+'</span>';
   const cls=off?'done':(ev.status==='done'||ev.status==='skipped')?'done':ev.status==='pending'?'pending':'';
   if(sect==='recurring'){
     const badge=it.variable?'<span class="tag var">varies</span>':'';
@@ -2253,7 +2270,7 @@ function rowHTML(sect,it){
     const adjTag=adj?`<span class="tag" style="color:var(--gold);border-color:rgba(224,166,78,.4)">${adj.skip?'skipped':'moved'}</span>`:'';
     return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${badge}${startTxt}${adjTag}${paidTag}${offbadge}</td><td class="mono" style="color:var(--mute)">${shownDay?'day '+shownDay:'—'}</td><td style="color:var(--mute);font-size:12px">${it.variable?'Varies':'Fixed'}</td><td class="amt">${amtTxt}</td>${actions(sect,it)}</tr>`;
   }
-  const offbadge=off?'<span class="tag">paused</span>':'';
+  const offbadge=off?'<span class="tag">'+offWord+'</span>':'';
   if(sect==='payin4'){
     const dates=payin4Dates(it);
     const today=new Date();today.setHours(0,0,0,0);
@@ -2261,7 +2278,7 @@ function rowHTML(sect,it){
     const next=dates.find(d=>d>=today);
     const cnt=dates.length||4;
     const nextTxt=off?'—':(!dates.length?'set date':next?(MON[next.getMonth()]+' '+next.getDate()):'done');
-    const leftPill=off?'<span class="leftpill">paused</span>':(!dates.length?'<span class="leftpill">—</span>':remaining>0?'<span class="leftpill">'+remaining+' of '+cnt+' left</span>':'<span class="leftpill">paid off</span>');
+    const leftPill=off?offPill:(!dates.length?'<span class="leftpill">—</span>':remaining>0?'<span class="leftpill">'+remaining+' of '+cnt+' left</span>':'<span class="leftpill">paid off</span>');
     const perTxt=(ev.inMonth>0&&!off)?' <span class="estmark">'+ev.inMonth+'×'+fmt0(it.amount)+'</span>':'';
     const amtCell=(ev.status==='on'&&!off)?fmt(ev.amt)+perTxt:'<span style="color:var(--faint)">'+fmt(ev.amt)+'</span>';
     return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${offbadge}</td><td class="mono" style="color:var(--mute)">${nextTxt}</td><td>${leftPill}</td><td class="amt">${amtCell}</td>${actions(sect,it)}</tr>`;
@@ -2269,7 +2286,7 @@ function rowHTML(sect,it){
   if(sect==='card'){
     const once=(it.kind==='once')||(it.kind==null&&Number(it.left)===1);
     const dateTxt=once?(it.date?fmtDate(it.date):'—'):(nextDue(it)||'—');
-    const midCol=off?'<span class="leftpill">paused</span>'
+    const midCol=off?offPill
       :once?(ev.status==='done'?'<span class="leftpill">finished</span>':ev.status==='pending'?'<span class="leftpill">'+fmtDate(it.date)+'</span>':'<span class="leftpill">one-time</span>')
       :'<span class="leftpill">recurring</span>';
     const amtCell=(ev.status==='on'&&!off)?fmt(it.amount):'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>';
@@ -2277,21 +2294,20 @@ function rowHTML(sect,it){
   }
   if(sect==='oneoff'){
     const dateTxt=it.date?fmtDate(it.date):'—';
-    const midCol=off?'<span class="leftpill">paused</span>'
+    const midCol=off?offPill
       :ev.status==='done'?'<span class="leftpill">finished</span>'
       :ev.status==='pending'?'<span class="leftpill">'+(it.date?fmtDate(it.date):'upcoming')+'</span>'
       :'<span class="leftpill">this month</span>';
     const amtCell=(ev.status==='on'&&!off)?fmt(it.amount):'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>';
     return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${offbadge}</td><td class="mono" style="color:var(--mute)">${dateTxt}</td><td>${midCol}</td><td class="amt">${amtCell}</td>${actions(sect,it)}</tr>`;
   }
-  const leftTxt=off?'<span class="leftpill">paused</span>':(it.left===''||it.left==null)?'<span class="leftpill">ongoing</span>':ev.status==='done'?'<span class="leftpill">paid off</span>':ev.status==='pending'?'<span class="leftpill">starts '+fmtDate(it.date)+'</span>':'<span class="leftpill">'+ev.leftAt+' left</span>';
+  const leftTxt=off?offPill:(it.left===''||it.left==null)?'<span class="leftpill">ongoing</span>':ev.status==='done'?'<span class="leftpill">paid off</span>':ev.status==='pending'?'<span class="leftpill">starts '+fmtDate(it.date)+'</span>':'<span class="leftpill">'+ev.leftAt+' left</span>';
   return `<tr class="${cls}"><td><span class="nmtxt">${esc(it.name)}</span>${offbadge}</td><td class="mono" style="color:var(--mute)">${off?'—':(nextDue(it)||'—')}</td><td>${leftTxt}</td><td class="amt">${(ev.status==='on'&&!off)?fmt(it.amount):'<span style="color:var(--faint)">'+fmt(it.amount)+'</span>'}</td>${actions(sect,it)}</tr>`;
 }
 // The pause, edit and delete buttons at the end of a row.
 function actions(sect,it){
-  const adj=sect==='recurring'&&it.monthAdj&&it.monthAdj[ymKey(billVi(it,selIdx))];
-  const off=it.on===false||!!(adj&&adj.skip);
-  const toggle=`<button class="icon-btn" title="${off?'Turn on':sect==='recurring'?'Turn off for this month':'Turn off'}" onclick="toggleOn('${sect}','${it.id}')">${off?'○':'◉'}</button>`;
+  const off=it.on===false||isSkipped(it,sect,selIdx);
+  const toggle=`<button class="icon-btn" title="${off?'Turn on':isOneTime(it,sect)?'Turn off':'Turn off for this month'}" onclick="toggleOn('${sect}','${it.id}')">${off?'○':'◉'}</button>`;
   return `<td style="text-align:right;white-space:nowrap">${toggle}<button class="icon-btn" onclick="startEdit('${sect}','${it.id}')">✎</button><button class="icon-btn" onclick="del('${sect}','${it.id}')">🗑</button></td>`;
 }
 
@@ -2379,14 +2395,14 @@ window.addItem=sect=>{
 };
 // Start editing a row; pause or resume an item; cancel an edit.
 window.startEdit=(sect,id)=>{editing={sect,id};editTypeTmp=null;renderSections();};
-// A recurring bill is turned off for the month you are viewing only (the same as "Skip"
-// in the edit form); other months are untouched. Other kinds of item pause everywhere.
-// A bill paused everywhere by an older version is switched back on first.
+// The on/off button turns an item off for the month you are viewing only; other months
+// are untouched. A one-time item has only one month, so it is simply switched off or on.
+// An item paused everywhere by an older version is switched back on first.
 window.toggleOn=(sect,id)=>{
   const it=S[sect].find(x=>x.id===id);if(!it)return;
-  if(sect!=='recurring'||it.on===false)it.on=it.on===false;
+  if(isOneTime(it,sect)||it.on===false)it.on=it.on===false;
   else{
-    const k=ymKey(billVi(it,selIdx));
+    const k=skipKey(it,sect,selIdx);
     if(!it.monthAdj)it.monthAdj={};
     if(it.monthAdj[k]&&it.monthAdj[k].skip)delete it.monthAdj[k];else it.monthAdj[k]={skip:true};
   }
@@ -2440,11 +2456,11 @@ window.commitEdit=(sect,id)=>{
   }
   editing={sect:null,id:null};editTypeTmp=null;save();render();
 };
-// Deletes an item after asking. A recurring bill asks which months to remove it from.
+// Deletes an item after asking. Anything that repeats asks which months to remove it from.
 window.del=(sect,id)=>{
   const it=S[sect].find(x=>x.id===id);if(!it)return;
-  if(sect==='recurring'){
-    const ml=MONL[idxToYM(selIdx).m],b=how=>`<button class="btn sm" onclick="delBill('${it.id}','${how}')">`;
+  if(!isOneTime(it,sect)){
+    const ml=MONL[idxToYM(selIdx).m],b=how=>`<button class="btn sm" onclick="delBill('${sect}','${it.id}','${how}')">`;
     showModal(`<h2>Remove "${esc(it.name)}"</h2><p class="ph">Which months should it be removed from?</p>
       <div style="display:flex;flex-direction:column;gap:8px">${b('month')}${ml} only</button>${b('later')}${ml} and every month after</button>${b('all')}Every month (delete it)</button></div>
       <div class="imp-foot"><span></span><button class="btn sm" onclick="closeModal()">Cancel</button></div>`);
@@ -2453,15 +2469,14 @@ window.del=(sect,id)=>{
   if(!confirm(`Delete "${it.name}"? This can't be undone.`))return;
   S[sect]=S[sect].filter(x=>x.id!==id);save();render();
 };
-// Carries out the choice made in the remove-a-bill dialog:
-//   month - skip the month being viewed; later - set the bill's last month to the month
-//   before, so earlier months keep it; all - delete the bill completely.
-window.delBill=(id,how)=>{
-  const it=S.recurring.find(x=>x.id===id);if(!it)return;
-  const bk=billVi(it,selIdx);
-  if(how==='month'){if(!it.monthAdj)it.monthAdj={};it.monthAdj[ymKey(bk)]={skip:true};}
-  else if(how==='later')it.end=ymKey(bk-1);
-  else S.recurring=S.recurring.filter(x=>x.id!==id);
+// Carries out the choice made in the remove dialog:
+//   month - turn it off for the month being viewed; later - set its last month to the
+//   month before, so earlier months keep it; all - delete it completely.
+window.delBill=(sect,id,how)=>{
+  const it=S[sect].find(x=>x.id===id);if(!it)return;
+  if(how==='month'){if(!it.monthAdj)it.monthAdj={};it.monthAdj[skipKey(it,sect,selIdx)]={skip:true};}
+  else if(how==='later')it.end=ymKey((sect==='recurring'?billVi(it,selIdx):selIdx)-1);
+  else S[sect]=S[sect].filter(x=>x.id!==id);
   closeModal();save();render();
 };
 // Settings boxes: paycheck amount, a known payday, take-home for the month being viewed (and
