@@ -11,6 +11,8 @@ on:
       - "sw.js"
       - "manifest.webmanifest"
       - "icon.svg"
+      - "bg-wide.jpg"
+      - "bg-tall.jpg"
       - ".github/workflows/deploy.yml"
   workflow_dispatch: {}
 
@@ -42,6 +44,8 @@ jobs:
             aws s3 cp sw.js "s3://$1/sw.js" --region "$2" --content-type "text/javascript; charset=utf-8" --cache-control "no-cache"
             aws s3 cp manifest.webmanifest "s3://$1/manifest.webmanifest" --region "$2" --content-type "application/manifest+json" --cache-control "public, max-age=300"
             aws s3 cp icon.svg "s3://$1/icon.svg" --region "$2" --content-type "image/svg+xml" --cache-control "public, max-age=86400"
+            aws s3 cp bg-wide.jpg "s3://$1/bg-wide.jpg" --region "$2" --content-type "image/jpeg" --cache-control "public, max-age=86400"
+            aws s3 cp bg-tall.jpg "s3://$1/bg-tall.jpg" --region "$2" --content-type "image/jpeg" --cache-control "public, max-age=86400"
           }
           upload "${{ vars.SITE_BUCKET }}" "${{ vars.AWS_REGION }}"
           # Failover copy runs only once SITE_BUCKET_FAILOVER exists (it isn't in Terraform yet).
@@ -53,4 +57,4 @@ jobs:
         run: |
           aws cloudfront create-invalidation \
             --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
-            --paths "/index.html" "/" "/sw.js" "/manifest.webmanifest" "/icon.svg"
+            --paths "/index.html" "/" "/sw.js" "/manifest.webmanifest" "/icon.svg" "/bg-wide.jpg" "/bg-tall.jpg"
