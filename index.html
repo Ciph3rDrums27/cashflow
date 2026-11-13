@@ -1409,14 +1409,14 @@ function amountAt(it,vi){let a=Number(it.amount)||0;const ch=it.amountFrom||{};O
 //   installments and card charges - the monthly amount from the start month, for as many
 //                    payments as are left; with no count, every month from the start
 function evalItem(it,sect,vi){
+  // Past its last month (set in the edit form, or by "this month and every month after"
+  // when removing). Checked first so a paused item that has ended also counts as finished.
+  const en=monthStartIdx(it.end);
+  if(en!=null&&(sect==='recurring'?billVi(it,vi):vi)>en)return {amt:0,active:false,status:'done'};
   if(it.on===false)return {amt:0,active:false,status:'off'};
-  // Turned off for this month only, or removed from a month onwards. (Recurring bills
-  // do the same checks further down, because a bill paid ahead belongs to the next month.)
-  if(sect!=='recurring'){
-    if(isSkipped(it,sect,vi))return {amt:0,active:false,status:'skipped'};
-    const en=monthStartIdx(it.end);
-    if(en!=null&&vi>en)return {amt:0,active:false,status:'done'};
-  }
+  // Turned off for this month only. (Recurring bills check this further down, because a
+  // bill paid ahead belongs to the next month.)
+  if(sect!=='recurring'&&isSkipped(it,sect,vi))return {amt:0,active:false,status:'skipped'};
   const mode=SECT[sect].mode;
   if(mode==='payin4'){
     const dates=payin4Dates(it);
@@ -1434,8 +1434,6 @@ function evalItem(it,sect,vi){
     const bv=billVi(it,vi);
     if(st!=null&&bv<st)return {amt:0,active:false,status:'pending'};
     if(it.monthAdj&&it.monthAdj[ymKey(bv)]&&it.monthAdj[ymKey(bv)].skip)return {amt:0,active:false,status:'skipped'};
-    const en=monthStartIdx(it.end);
-    if(en!=null&&bv>en)return {amt:0,active:false,status:'done'};
     const base=amountAt(it,bv);
     if(it.variable){
       const key=ymKey(bv), has=it.months&&it.months[key]!=null;
@@ -2471,11 +2469,13 @@ window.del=(sect,id)=>{
 };
 // Carries out the choice made in the remove dialog:
 //   month - turn it off for the month being viewed; later - set its last month to the
-//   month before, so earlier months keep it; all - delete it completely.
+//   month before, so earlier months keep it; all - delete it completely. "later" on an
+//   item that only starts in the viewed month or after leaves nothing, so it is deleted.
 window.delBill=(sect,id,how)=>{
   const it=S[sect].find(x=>x.id===id);if(!it)return;
+  const vi=sect==='recurring'?billVi(it,selIdx):selIdx,st=sect==='recurring'?monthStartIdx(it.start):parseStart(it.date);
   if(how==='month'){if(!it.monthAdj)it.monthAdj={};it.monthAdj[skipKey(it,sect,selIdx)]={skip:true};}
-  else if(how==='later')it.end=ymKey((sect==='recurring'?billVi(it,selIdx):selIdx)-1);
+  else if(how==='later'&&!(st!=null&&st>=vi))it.end=ymKey(vi-1);
   else S[sect]=S[sect].filter(x=>x.id!==id);
   closeModal();save();render();
 };
