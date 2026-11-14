@@ -8,8 +8,8 @@ applies to this app. Each section names the OWASP area it comes from.
 
 ## What this app is
 
-- One file, `index.html`: HTML, CSS and plain JavaScript. No build step, no framework, no
-  server, no third-party code.
+- Two files: `index.html` (the page and its styles) and `app.js` (all the code, plain
+  JavaScript). No build step, no framework, no server, no third-party code.
 - All data stays in the browser (`localStorage`, key `cashflow:v3`). Nothing is sent anywhere.
 - The repository is **public**. The site is deployed to S3/CloudFront by
   `.github/workflows/deploy.yml` on every push to `main`.
@@ -41,10 +41,17 @@ or dates.
   `value="..."`, `title="..."`, `placeholder="..."` and `data-...="..."`.
 - Money goes through `fmt()` / `fmt0()`, which only ever produce digits and punctuation.
 - Prefer `textContent` when no markup is needed.
+- **No inline script.** Never write `onclick="..."`, any other `on...=` attribute, an inline
+  `<script>` block or a `javascript:` link, in `index.html` or in HTML built by `app.js`.
+  A button or input names what it does in a data attribute, for example
+  `data-click="del('recurring','x1a2b3c')"`, and the listeners at the end of `app.js` run it.
+  A new action must be added to the `ACTIONS` list there. Handlers attached in code
+  (`el.onclick = ...`, `addEventListener`) are fine.
 - Only ids that passed `safeId` in `normalize()` (letters, digits, `_`, `-`) and names taken
-  from the fixed lists in the code (`SECTKEYS`, `VIEWS`) may be placed inside an inline
-  handler such as `onclick="del('recurring','x1a2b3c')"`. Never put a name, amount, date or
-  any other free text inside an inline handler.
+  from the fixed lists in the code (`SECTKEYS`, `VIEWS`) may be placed inside a `data-click`
+  (or similar) attribute. Never put a name, amount, date or any other free text there.
+- Do not widen `runAction`: it accepts quoted text, numbers, `true`/`false`, `this.value`,
+  `this.checked` and `event`, and nothing else. It must never evaluate expressions.
 - Never use `eval`, `new Function`, `document.write`, `setTimeout` with a string, or
   `insertAdjacentHTML` with unescaped data.
 
@@ -86,10 +93,10 @@ or dates.
 - The live site sends a Content-Security-Policy and other security headers from CloudFront
   (configured outside this repository). `index.html` also carries a `<meta>` policy as a
   fallback for local or other hosting. Do not loosen either.
-- Do not add inline `<script src>` from another origin, `<iframe>`, `<object>`, `<embed>`,
-  `<base>` or a `<form>` that posts anywhere.
-- Moving the script out of `index.html` so `'unsafe-inline'` can be dropped is welcome, but
-  it changes the deploy and the tests: propose it to the owner first.
+- Do not add a `<script src>` from another origin, `<iframe>`, `<object>`, `<embed>`,
+  `<base>` or a `<form>` that posts anywhere. The only script is `<script src="app.js">`.
+- The code is written so the policy can forbid inline script (`script-src 'self'`). Keep it
+  that way; see rule 1. Inline `style="..."` attributes are still allowed.
 
 ### 6. Dependencies and supply chain (OWASP: General Coding Practices)
 
@@ -126,8 +133,10 @@ or dates.
 - `esc()` stops escaping `& < > " '`;
 - a hostile backup can inject a tag or break out of an attribute in any list, row or edit form;
 - an id from a backup is not replaced when it contains anything but letters, digits, `_`, `-`;
-- `index.html` references another website, loads an external script, drops the fallback
-  security policy, or uses `eval` / `new Function` / `document.write`.
+- `index.html` or `app.js` references another website, loads any script other than `app.js`,
+  drops the fallback security policy, or uses `eval` / `new Function` / `document.write`;
+- an inline `<script>` block, an `on...=` attribute or a `javascript:` link appears anywhere;
+- the action runner calls a function that is not in `ACTIONS`, or accepts an expression.
 
 When you add a new place where data reaches the page, add its field to the hostile backup in
 that test. If a guardrail test fails, fix the code; do not weaken the test.

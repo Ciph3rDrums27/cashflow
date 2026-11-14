@@ -1,13 +1,12 @@
-// Tests for demo mode (?demo=1). Same approach as money.test.mjs: load the real <script>
-// from index.html with a small stand-in for the browser. Run: node --test tests/*.test.mjs
+// Tests for demo mode (?demo=1). Same approach as money.test.mjs: load the real script
+// (app.js) with a small stand-in for the browser. Run: node --test tests/*.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 function loadApp(search) {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  let js = html.slice(html.indexOf('<script>') + 8, html.lastIndexOf('</script>'));
+  let js = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   js = js.replace(/\nload\(\);\s*$/, '\n'); // don't boot the UI
   js += `\nglobalThis.app={DEMO,demoSeed,store,KEY,normalize,curIdx,ymKey,SECTKEYS,evalItem,cashOut,balanceFor,cardPaymentTotal,payoffPlan,runningBalance,
     use(d){S=normalize(JSON.parse(JSON.stringify(d)));selIdx=curIdx();return S;},get S(){return S}};`;

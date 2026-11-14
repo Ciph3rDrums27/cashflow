@@ -13,7 +13,7 @@ A self-contained web app for forecasting month-to-month cashflow when your oblig
 - **"What will actually be left after everything clears my account this month?"**
 - **"When does my monthly load drop, and which debt should I attack first?"**
 
-It runs as a single `index.html` you can open locally, host on GitHub Pages, or serve to your phone over a private network. There is no server, no account, and no database. All state lives in your browser.
+It is one page (`index.html` plus its script, `app.js`) that you can open locally, host on GitHub Pages, or serve to your phone over a private network. There is no server, no account, and no database. All state lives in your browser.
 
 ## Why it exists
 
@@ -72,7 +72,7 @@ Treat the exported JSON as both your backup and your sync mechanism.
 
 ## Deploy your own (GitHub Pages)
 
-1. Create a repository and add `index.html` (and this `README.md`).
+1. Create a repository and add `index.html` and `app.js` (and this `README.md`).
 2. **Settings → Pages → Source: Deploy from a branch → `main` / root.**
 3. Confirm **Enforce HTTPS** is enabled.
 4. Your app is live at `https://<username>.github.io/<repo>/`.
@@ -80,11 +80,11 @@ Treat the exported JSON as both your backup and your sync mechanism.
 
 ## Optional: private access from your phone
 
-To use it on a phone while keeping everything local (no public hosting), serve `index.html` from your computer and reach it over a private mesh VPN (e.g. Tailscale), then **Add to Home Screen** in mobile Safari for an app-like icon. The app is never exposed to the public internet in this mode.
+To use it on a phone while keeping everything local (no public hosting), serve `index.html` and `app.js` from your computer and reach it over a private mesh VPN (e.g. Tailscale), then **Add to Home Screen** in mobile Safari for an app-like icon. The app is never exposed to the public internet in this mode.
 
 ## Tests
 
-Demo mode has its own tests proving it never touches saved data. The money math (payments, payoff, paycheck coverage, running balance, carry-forward income) has tests that run against the real code in `index.html`:
+Demo mode has its own tests proving it never touches saved data. The money math (payments, payoff, paycheck coverage, running balance, carry-forward income) has tests that run against the real code in `app.js`:
 
 ```bash
 node --test tests/*.test.mjs
@@ -92,7 +92,7 @@ node --test tests/*.test.mjs
 
 ## Tech
 
-- Single `index.html` — HTML, CSS, and vanilla JavaScript in one file, plus `sw.js`, `manifest.webmanifest`, and `icon.svg` for offline use
+- `index.html` (page and styles) and `app.js` (vanilla JavaScript), plus `sw.js`, `manifest.webmanifest`, and `icon.svg` for offline use
 - Hand-rolled SVG charts (no charting library)
 - `localStorage` persistence with JSON export/import
 - Native system fonts; no external resources
