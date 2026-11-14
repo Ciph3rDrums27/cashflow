@@ -1,6 +1,7 @@
-# Place this at .github/workflows/deploy.yml in your repo. No edits needed —
-# it reads the variables Terraform created (AWS_DEPLOY_ROLE_ARN, SITE_BUCKET,
-# CLOUDFRONT_DISTRIBUTION_ID, AWS_REGION).
+# Uploads the site to S3 and clears the CloudFront cache whenever a site file changes on main.
+# It signs in to AWS with a short-lived OIDC role (no stored AWS keys) and reads its settings
+# from the repository variables Terraform created: AWS_DEPLOY_ROLE_ARN, SITE_BUCKET,
+# CLOUDFRONT_DISTRIBUTION_ID, AWS_REGION (and SITE_BUCKET_FAILOVER, if it exists).
 name: Deploy site
 
 on:
@@ -27,9 +28,12 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Assume AWS role via OIDC
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
@@ -37,8 +41,15 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      # Settings reach the scripts below as environment variables, never pasted into the
+      # script text, so a value can never be run as a command.
       - name: Upload site files to S3
+        env:
+          SITE_BUCKET: ${{ vars.SITE_BUCKET }}
+          SITE_BUCKET_FAILOVER: ${{ vars.SITE_BUCKET_FAILOVER }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
         run: |
+          set -euo pipefail
           upload() {  # $1 = bucket, $2 = region
             aws s3 cp index.html "s3://$1/index.html" --region "$2" --content-type "text/html; charset=utf-8" --cache-control "public, max-age=300"
             aws s3 cp sw.js "s3://$1/sw.js" --region "$2" --content-type "text/javascript; charset=utf-8" --cache-control "no-cache"
@@ -47,14 +58,17 @@ jobs:
             aws s3 cp bg-wide.jpg "s3://$1/bg-wide.jpg" --region "$2" --content-type "image/jpeg" --cache-control "public, max-age=86400"
             aws s3 cp bg-tall.jpg "s3://$1/bg-tall.jpg" --region "$2" --content-type "image/jpeg" --cache-control "public, max-age=86400"
           }
-          upload "${{ vars.SITE_BUCKET }}" "${{ vars.AWS_REGION }}"
+          upload "$SITE_BUCKET" "$AWS_REGION"
           # Failover copy runs only once SITE_BUCKET_FAILOVER exists (it isn't in Terraform yet).
-          if [ -n "${{ vars.SITE_BUCKET_FAILOVER }}" ]; then
-            upload "${{ vars.SITE_BUCKET_FAILOVER }}" us-east-1
+          if [ -n "${SITE_BUCKET_FAILOVER:-}" ]; then
+            upload "$SITE_BUCKET_FAILOVER" us-east-1
           fi
 
       - name: Invalidate CloudFront cache
+        env:
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
+          set -euo pipefail
           aws cloudfront create-invalidation \
-            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
             --paths "/index.html" "/" "/sw.js" "/manifest.webmanifest" "/icon.svg" "/bg-wide.jpg" "/bg-tall.jpg"
