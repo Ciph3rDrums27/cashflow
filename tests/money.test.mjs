@@ -1,4 +1,4 @@
-// Tests for the app's money math. They load the real <script> from index.html (no copy
+// Tests for the app's money math. They load the real script, app.js (no copy
 // of the logic), with a tiny stand-in for the browser. Run: node --test tests/money.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,8 +6,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 function loadApp() {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  let js = html.slice(html.indexOf('<script>') + 8, html.lastIndexOf('</script>'));
+  let js = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   js = js.replace(/\nload\(\);\s*$/, '\n'); // don't boot the UI
   js += `\nglobalThis.app={use(d){S=normalize(JSON.parse(JSON.stringify(d)));selIdx=curIdx();return S;},get S(){return S},
     curIdx,mi,ymKey,normalize,incomeFor,paycheckFor,paydaysIn,cardCashPay,cardPaymentTotal,balanceFor,payoffPlan,

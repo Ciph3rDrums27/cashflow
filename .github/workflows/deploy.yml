@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "index.html"
+      - "app.js"
       - "sw.js"
       - "manifest.webmanifest"
       - "icon.svg"
@@ -52,6 +53,7 @@ jobs:
           set -euo pipefail
           upload() {  # $1 = bucket, $2 = region
             aws s3 cp index.html "s3://$1/index.html" --region "$2" --content-type "text/html; charset=utf-8" --cache-control "public, max-age=300"
+            aws s3 cp app.js "s3://$1/app.js" --region "$2" --content-type "text/javascript; charset=utf-8" --cache-control "public, max-age=300"
             aws s3 cp sw.js "s3://$1/sw.js" --region "$2" --content-type "text/javascript; charset=utf-8" --cache-control "no-cache"
             aws s3 cp manifest.webmanifest "s3://$1/manifest.webmanifest" --region "$2" --content-type "application/manifest+json" --cache-control "public, max-age=300"
             aws s3 cp icon.svg "s3://$1/icon.svg" --region "$2" --content-type "image/svg+xml" --cache-control "public, max-age=86400"
@@ -71,4 +73,4 @@ jobs:
           set -euo pipefail
           aws cloudfront create-invalidation \
             --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
-            --paths "/index.html" "/" "/sw.js" "/manifest.webmanifest" "/icon.svg" "/bg-wide.jpg" "/bg-tall.jpg"
+            --paths "/index.html" "/" "/app.js" "/sw.js" "/manifest.webmanifest" "/icon.svg" "/bg-wide.jpg" "/bg-tall.jpg"
