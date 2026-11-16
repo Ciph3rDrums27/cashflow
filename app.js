@@ -340,6 +340,9 @@ function normalize(s){
   s.recurring.forEach(it=>{
     if(!it.amountFrom||typeof it.amountFrom!=='object')it.amountFrom={};
     if(!it.spent||typeof it.spent!=='object')it.spent={};
+    // logged: the purchases behind each month's spent total, for the breakdown on Home.
+    // {'2026-11':[{date,name,amount,cat}]}. Older entries have a total but no detail.
+    if(!it.logged||typeof it.logged!=='object'||Array.isArray(it.logged))it.logged={};
     if(it.end!=null&&!/^\d{4}-\d{2}$/.test(String(it.end)))delete it.end;
   });
   if(!s.checking||typeof s.checking!=='object')s.checking={};
@@ -700,7 +703,7 @@ function calItems(vi){
     }
     const ev=evalItem(it,sect,vi);
     if(ev.status!=='on'||ev.amt<=0)return;
-    const base={sect,id:it.id,amount:ev.amt,variable:!!it.variable,est:!!ev.est,spent:ev.spent||0};
+    const base={sect,id:it.id,amount:ev.amt,variable:!!it.variable,est:!!ev.est,spent:ev.spent||0,bought:it.src==='chase'};
     if(sect==='recurring'&&it.paidEarly){
       const pays=paydaysIn(vi),due=dayOf(it,sect,vi),nm=MON[idxToYM(vi+1).m],dd=due==null?null:Math.min(due,daysInMonth(vi+1));
       out.push(Object.assign(base,{name:it.name+(dd?` (${nm} ${dd})`:` (${nm})`),day:pays.length?pays[pays.length-1]:clampDay(due)}));
@@ -743,7 +746,8 @@ function runningBalance(untilN){
   for(let vi=mi(a.y,a.m);vi<=mi(b.y,b.m);vi++){
     const {y,m}=idxToYM(vi);
     paydaysIn(vi).forEach(dd=>add(dayNum(y,m,dd),{kind:'pay',amount:paycheckFor(vi)}));
-    calItems(vi).forEach(i=>{if(i.day!=null)add(dayNum(y,m,i.day),Object.assign({kind:'bill'},i));});
+    // Purchases imported from a bank statement already happened, so they are not bills to come.
+    calItems(vi).forEach(i=>{if(i.day!=null&&!i.bought)add(dayNum(y,m,i.day),Object.assign({kind:'bill'},i));});
   }
   let bal=Number(S.checking.amount);const daily=[{n:start,bal}];
   for(let n=start+1;n<=end;n++){(ev[n]||[]).forEach(e=>{bal+=e.kind==='pay'?e.amount:-e.amount;});daily.push({n,bal});}
@@ -756,7 +760,7 @@ window.setChecking=()=>{const el=document.getElementById('homeBal');const v=el?e
 // Dated items due between two days, soonest first.
 function upcomingBills(fromN,toN){
   const out=[],a=dayNumToDate(fromN),b=dayNumToDate(toN);
-  for(let vi=mi(a.y,a.m);vi<=mi(b.y,b.m);vi++){const {y,m}=idxToYM(vi);calItems(vi).forEach(i=>{if(i.day==null)return;const n=dayNum(y,m,i.day);if(n>=fromN&&n<=toN)out.push(Object.assign({n},i));});}
+  for(let vi=mi(a.y,a.m);vi<=mi(b.y,b.m);vi++){const {y,m}=idxToYM(vi);calItems(vi).forEach(i=>{if(i.day==null||i.bought)return;const n=dayNum(y,m,i.day);if(n>=fromN&&n<=toN)out.push(Object.assign({n},i));});}
   return out.sort((x,z)=>x.n-z.n||z.amount-x.amount);
 }
 // ========== HOME TAB ==========
@@ -806,14 +810,26 @@ function renderHome(){
     return `<div class="budrow"><span>${esc(it.name)}</span><span class="mono${over?' warnt':''}">${fmt0(sp)} of ${fmt0(b)}${over?' · over by '+fmt0(sp-b):''}</span></div><div class="budbar"><i class="${over?'over':''}" style="width:${Math.min(100,sp/b*100)}%"></i></div>`;
   }).join('');
   const budget=bud?`<div class="bud"><div class="hero-lab">${MONL[idxToYM(cur).m]} budget</div>${bud}<div class="budhint">Use + Log to count spending against a budget.</div></div>`:'';
+  // Discretionary breakdown: every purchase counted against that budget this month.
+  const disc=(S.recurring||[]).find(it=>it.on!==false&&it.variable&&it.day==null&&/discretion|dining|fun|entertain/i.test(it.name));
+  let discCol='';
+  if(disc){
+    const rows=(Array.isArray(disc.logged&&disc.logged[k])?disc.logged[k]:[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||(Number(b.amount)||0)-(Number(a.amount)||0));
+    const total=Number(disc.spent&&disc.spent[k])||0,listed=rows.reduce((t,r)=>t+(Number(r.amount)||0),0),b=amountAt(disc,cur);
+    const list=rows.map(r=>`<div class="discrow"><span class="d">${esc(fmtDate(String(r.date)))}</span><span class="n">${esc(r.name)}${r.cat?` <span class="c">${esc(r.cat)}</span>`:''}</span><span class="a mono">${fmt(r.amount)}</span></div>`).join('')
+      +(total-listed>0.004?`<div class="discrow"><span class="d"></span><span class="n c">Logged earlier, no detail</span><span class="a mono">${fmt(total-listed)}</span></div>`:'');
+    discCol=`<div class="hero-disc"><div class="hero-lab">${MONL[idxToYM(cur).m]} ${esc(disc.name.replace(/\s*\(.*\)\s*$/,''))}</div>
+      <div class="disctot mono${b&&total>b?' warnt':''}">${fmt(total)} <span>of ${fmt0(b)}</span></div>
+      ${list?`<div class="disclist">${list}</div>`:'<div class="empty">Nothing yet. Purchases you import or + Log to this budget show here.</div>'}</div>`;
+  }
   const noDue=(S.ccBalances||[]).reduce((t,c)=>t+(c.dueDay==null?cardCashPay(c,cur):0),0);
   if(rb&&noDue>0)notes.push(`<span class="warnt">Not counted:</span> ${fmt0(noDue)} in card payments with no due day. <button class="lnk" data-click="setView('cards')">Set due days</button>`);
   const age=backupAge();
   if(age==null||age>14)notes.push(`<span class="warnt">${age==null?'No backup yet.':'Last backup '+age+' days ago.'}</span> <button class="lnk" data-click="doExport()">Export now</button>`);
   const up=upcomingBills(tNow,tNow+14);
   const side=up.length?up.slice(0,7).map(i=>billRow(i,i.n===tNow?'Today':fmtDay(i.n))).join('')+(up.length>7?`<div class="note-block">+ ${up.length-7} more in the Calendar</div>`:''):'<div class="empty">Nothing due in the next 14 days.</div>';
-  el.innerHTML=`<div class="hero-grid"><div class="hero-main">${main}${budget}<div class="hero-notes">${notes.map(n=>`<div>${n}</div>`).join('')}</div></div>
-    <div class="hero-side"><div class="hero-lab">Due in the next 14 days</div>${side}</div></div>`;
+  el.innerHTML=`<div class="hero-grid${discCol?' three':''}"><div class="hero-main">${main}${budget}<div class="hero-notes">${notes.map(n=>`<div>${n}</div>`).join('')}</div></div>
+    ${discCol}<div class="hero-side"><div class="hero-lab">Due in the next 14 days</div>${side}</div></div>`;
 }
 
 // ========== CALENDAR TAB ==========
@@ -944,7 +960,8 @@ window.openLog=()=>{
 window.logWhat=()=>{
   const v=document.getElementById('lg_what').value,hint=document.getElementById('lg_hint');
   const dt=document.getElementById('lg_date').value||todayISO(),k=dt.slice(0,7),vi=monthStartIdx(k);
-  document.getElementById('lg_namewrap').hidden=!(v==='oneoff'||v==='card');
+  const lb=v.startsWith('bill:')&&S.recurring.find(x=>x.id===v.slice(5));
+  document.getElementById('lg_namewrap').hidden=!(v==='oneoff'||v==='card'||(lb&&lb.day==null));
   if(v.startsWith('bill:')){
     const it=S.recurring.find(x=>x.id===v.slice(5));
     hint.textContent=it.day==null
@@ -960,7 +977,7 @@ window.saveLog=()=>{
   const dt=document.getElementById('lg_date').value||todayISO(),k=dt.slice(0,7);
   if(v.startsWith('bill:')){
     const it=S.recurring.find(x=>x.id===v.slice(5));if(!it)return;
-    if(it.day==null)it.spent[k]=Math.round(((Number(it.spent[k])||0)+amt)*100)/100;
+    if(it.day==null)logPurchase(it,dt,(document.getElementById('lg_name').value||'').trim()||'Logged',amt);
     else it.months[k]=amt;
   }else{
     const name=(document.getElementById('lg_name').value||'').trim()||(v==='card'?'Card purchase':'Payment');
@@ -1753,14 +1770,33 @@ function cleanDesc(raw){
 // Where an imported purchase should go: the bill you picked for this merchant last time,
 // else a likely everyday bill by name, else One-time payments.
 const DEST_GUESS=[
+  [/shell|exxon|conoco|chevron|7-?eleven|sinclair|maverik|phillips 66|circle k|valero|bp\b|fuel|\bgas\b/i,/^gas|fuel/i],
   [/sprouts|king soopers|safeway|whole ?foods|trader joe|grocer|natural grocers|aldi|kroger|costco|h-?e-?b|albertsons|market/i,/grocer/i],
-  [/shell|exxon|conoco|chevron|7-?eleven|sinclair|maverik|phillips 66|circle k|valero|bp\b|fuel|gas\b/i,/^gas|fuel/i],
   [/restaurant|cafe|coffee|starbucks|\bbar\b|grill|pizza|taco|chipotle|doordash|uber ?eats|grubhub|brew|kitchen/i,/dining|discretionary|fun|eat/i],
 ];
+// When the bank file has a Category column, it decides first: [category, which budget].
+const CAT_GUESS=[
+  [/grocer/i,/grocer/i],
+  [/^gas|fuel/i,/^gas|fuel/i],
+  [/dining|restaurant|drink|coffee|entertainment|alcohol|bar|fun/i,/dining|discretionary|fun|eat/i],
+];
+// Categories that are payments on a debt, which the app already tracks under Installments,
+// Pay in 4 or Cards. They are listed but not imported unless you tick them.
+const DEBT_CAT=/debt|loan|credit card payment|transfer/i;
+// Adds one purchase to an everyday budget: raises that month's total and keeps the detail.
+function logPurchase(it,date,name,amount,cat){
+  const k=date.slice(0,7);
+  it.spent[k]=Math.round(((Number(it.spent[k])||0)+amount)*100)/100;
+  if(!it.logged)it.logged={};
+  if(!Array.isArray(it.logged[k]))it.logged[k]=[];
+  const row={date,name:String(name||'Logged').slice(0,80),amount};if(cat)row.cat=String(cat).slice(0,40);
+  it.logged[k].push(row);
+}
 // Your everyday budgets: bills that vary and have no fixed day (Groceries, Gas).
 function everydayBills(){return (S.recurring||[]).filter(it=>it.variable&&it.day==null);}
 // Picks where one imported purchase goes, using the rules described above.
-function guessDest(name){
+function guessDest(name,cat){
+  if(cat)for(const [re,bill] of CAT_GUESS){if(re.test(cat)){const it=everydayBills().find(x=>bill.test(x.name));if(it)return it.id;}}
   // hasOwn: a merchant called "constructor" or "__proto__" must not match built-in properties.
   const m=Object.prototype.hasOwnProperty.call(S.merchantMap,name)?S.merchantMap[name]:undefined;
   if(m==='oneoff')return 'oneoff';
@@ -1775,7 +1811,7 @@ function parseChaseCSV(text){
   const rows=csvParse(text);
   if(rows.length<2)return null;
   const hdr=rows[0].map(h=>h.trim().toLowerCase());
-  const ix={det:hdr.indexOf('details'),date:hdr.indexOf('posting date'),desc:hdr.indexOf('description'),amt:hdr.indexOf('amount'),type:hdr.indexOf('type')};
+  const ix={det:hdr.indexOf('details'),date:hdr.indexOf('posting date'),desc:hdr.indexOf('description'),amt:hdr.indexOf('amount'),type:hdr.indexOf('type'),cat:hdr.indexOf('category')};
   if(ix.date<0||ix.desc<0||ix.amt<0)return null;
   const existing=new Set((S.oneoff||[]).map(it=>(it.date||'')+'|'+(Number(it.amount)||0).toFixed(2)));
   const lastDest={};
@@ -1791,12 +1827,16 @@ function parseChaseCSV(text){
     const date=m[3]+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0');
     const type=(ix.type>=0?String(r[ix.type]):'').trim().toUpperCase();
     const amount=Math.abs(amtRaw);
+    const cat=(ix.cat>=0?String(r[ix.cat]||''):'').trim();
     let group='buy',why='';
-    if(type==='LOAN_PMT'){group='skip';why='autopay — likely your Pay in 4 section';}
+    // A category from the file says what the row is; without one, guess from the payment type.
+    if(cat&&DEBT_CAT.test(cat)){group='skip';why='debt payment — likely already in Installments, Pay in 4 or Cards';}
+    else if(cat){}
+    else if(type==='LOAN_PMT'){group='skip';why='autopay — likely your Pay in 4 section';}
     else if(type==='ACH_DEBIT'){group='skip';why='autopay/bill — likely Recurring or Installments';}
     const name=cleanDesc(r[ix.desc]),key=date+'|'+amount.toFixed(2)+'|'+name;
     const dup=existing.has(date+'|'+amount.toFixed(2))||Object.prototype.hasOwnProperty.call(S.imported,key);
-    txns.push({date,name,key,amount,group,dest:guessDest(name),why:dup?'already imported or a similar entry exists':why,sel:group==='buy'&&!dup});
+    txns.push({date,name,key,amount,cat,group,dest:guessDest(name,cat),why:dup?'already imported or a similar entry exists':why,sel:group==='buy'&&!dup});
   }
   txns.sort((a,b)=>a.group===b.group?(a.date<b.date?1:-1):(a.group==='buy'?-1:1));
   return {txns,credits};
@@ -1836,7 +1876,7 @@ window.impClose=()=>{IMP=null;const m=document.getElementById('impModal');if(m)m
 window.impCommit=()=>{
   IMP.txns.filter(t=>t.sel).forEach(t=>{
     const it=t.dest!=='oneoff'&&S.recurring.find(x=>x.id===t.dest);
-    if(it){const k=t.date.slice(0,7);it.spent[k]=Math.round(((Number(it.spent[k])||0)+t.amount)*100)/100;}
+    if(it)logPurchase(it,t.date,t.name,t.amount,t.cat);
     else S.oneoff.push({id:uid(),name:t.name,amount:t.amount,date:t.date,on:true,src:'chase'});
     S.merchantMap[t.name]=it?it.id:'oneoff';
     S.imported[t.key]=todayISO();
