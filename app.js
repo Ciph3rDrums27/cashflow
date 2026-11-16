@@ -1174,7 +1174,7 @@ function discSectionHTML(){
     ?`<tr><td class="editcell"><input id="dc_name" value="${esc(r.name)}"></td><td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${esc(r.date)}" value="${esc(dispDate(r.date))}" placeholder="7/23"></td><td class="editcell"><input id="dc_cat" value="${esc(r.cat||'')}" placeholder="Category"></td><td class="editcell"><input id="dc_amt" class="mono" type="number" value="${esc(r.amount)}"></td><td style="text-align:right;white-space:nowrap"><button class="icon-btn" data-click="discSave('${r.id}')">✓</button><button class="icon-btn" data-click="cancelEdit()">✕</button></td></tr>`
     :`<tr><td><span class="nmtxt">${esc(r.name)}</span></td><td class="mono" style="color:var(--mute)">${esc(fmtDate(r.date))}</td><td style="color:var(--mute);font-size:12px">${esc(r.cat||'')}</td><td class="amt">${fmt(r.amount)}</td><td style="text-align:right;white-space:nowrap"><button class="icon-btn" data-click="startEdit('disc','${r.id}')">✎</button><button class="icon-btn" data-click="discDel('${r.id}')">🗑</button></td></tr>`;
   const body=rows.map(row).join('')
-    +(earlier>0?`<tr><td><span class="nmtxt" style="color:var(--mute)">Logged earlier</span> <span class="tag">no detail</span></td><td class="mono" style="color:var(--mute)">—</td><td></td><td class="amt">${fmt(earlier)}</td><td></td></tr>`:'')
+    +(earlier>0?`<tr><td><span class="nmtxt" style="color:var(--mute)">Logged earlier</span> <span class="tag">no detail</span></td><td class="mono" style="color:var(--mute)">—</td><td></td><td class="amt">${fmt(earlier)}</td><td style="text-align:right"><button class="icon-btn" title="Remove this amount" data-click="discClearEarlier('${k}')">🗑</button></td></tr>`:'')
     ||`<tr><td colspan="5" class="empty">No discretionary spending in ${m} yet. Import a bank statement, use + Log, or add a purchase here.</td></tr>`;
   const add=addOpen.disc?`<div class="addrow" style="grid-template-columns:1.4fr .9fr .9fr .8fr auto"><input id="af_name" placeholder="e.g. Dinner out"><input id="af_date" class="datein" type="text" autocapitalize="off" autocorrect="off" placeholder="${esc(dispDate(todayISO()))}" title="date of the purchase"><input id="af_cat" placeholder="Category (optional)"><input id="af_amt" class="mono" type="number" placeholder="Amount"><button class="btn" data-click="discAdd()">Save</button></div>`:'';
   return `<div class="section panel">
@@ -1206,6 +1206,16 @@ window.discSave=id=>{
   if(nk===k)discChange(it,k,rows=>{rows[rows.findIndex(r=>r.id===id)]=upd;});
   else{discChange(it,k,rows=>rows.splice(rows.findIndex(r=>r.id===id),1));discChange(it,nk,rows=>rows.push(upd));}
   editing={sect:null,id:null};save();render();
+};
+// Removes the "Logged earlier" amount (spending with no detail) after asking. For when you
+// will add those purchases again one by one, by hand or from a fresh import.
+window.discClearEarlier=k=>{
+  const it=discBill();if(!it||!/^\d{4}-\d{2}$/.test(String(k)))return;
+  const e=discEarlier(it,k);if(!(e>0))return;
+  if(!confirm(`Remove ${fmt(e)} logged earlier without detail? Only do this if you'll add those purchases again (import or + Add purchase), or they won't be counted.`))return;
+  const rows=Math.round(discRows(it,k).reduce((t,x)=>t+(Number(x.amount)||0),0)*100)/100;
+  if(rows>0)it.spent[k]=rows;else delete it.spent[k];
+  save();render();
 };
 // Deletes a purchase after asking, and takes it off that month's total.
 window.discDel=id=>{
@@ -1900,8 +1910,16 @@ function parseChaseCSV(text){
     else if(type==='LOAN_PMT'){group='skip';why='autopay — likely your Pay in 4 section';}
     else if(type==='ACH_DEBIT'){group='skip';why='autopay/bill — likely Recurring or Installments';}
     const name=cleanDesc(r[ix.desc]),key=date+'|'+amount.toFixed(2)+'|'+name;
-    const dup=existing.has(date+'|'+amount.toFixed(2))||Object.prototype.hasOwnProperty.call(S.imported,key);
-    txns.push({date,name,key,amount,cat,group,dest:guessDest(name,cat),why:dup?'already imported or a similar entry exists':why,sel:group==='buy'&&!dup});
+    const wasImported=Object.prototype.hasOwnProperty.call(S.imported,key);
+    const dup=existing.has(date+'|'+amount.toFixed(2))||wasImported;
+    // Already imported into an everyday budget before purchases were kept one by one: that
+    // budget has the amount in its total but no row for it. Importing it again adds the row
+    // (the detail) without counting the money a second time.
+    const was=wasImported&&Object.prototype.hasOwnProperty.call(S.merchantMap,name)?S.merchantMap[name]:null;
+    const bill=was&&everydayBills().find(x=>x.id===was),k=date.slice(0,7);
+    const fill=!!(bill&&!discRows(bill,k).some(r=>r.date===date&&r.name===name&&Math.abs((Number(r.amount)||0)-amount)<0.005)&&discEarlier(bill,k)+0.004>=amount);
+    if(fill)txns.push({date,name,key,amount,cat,group:'buy',dest:bill.id,fill:true,why:'already counted, adds the detail',sel:true});
+    else txns.push({date,name,key,amount,cat,group,dest:guessDest(name,cat),why:dup?'already imported or a similar entry exists':why,sel:group==='buy'&&!dup});
   }
   txns.sort((a,b)=>a.group===b.group?(a.date<b.date?1:-1):(a.group==='buy'?-1:1));
   return {txns,credits};
@@ -1941,6 +1959,21 @@ window.impClose=()=>{IMP=null;const m=document.getElementById('impModal');if(m)m
 window.impCommit=()=>{
   IMP.txns.filter(t=>t.sel).forEach(t=>{
     const it=t.dest!=='oneoff'&&S.recurring.find(x=>x.id===t.dest);
+    // A purchase already in this budget's total: add its row only, the total stays the same.
+    if(t.fill&&it&&t.dest===S.merchantMap[t.name]){
+      const k=t.date.slice(0,7);
+      if(discEarlier(it,k)+0.004>=t.amount){
+        if(!Array.isArray(it.logged[k]))it.logged[k]=[];
+        it.logged[k].push(Object.assign({id:uid(),date:t.date,name:t.name.slice(0,80),amount:t.amount},t.cat?{cat:String(t.cat).slice(0,40)}:{}));
+        return;
+      }
+    }
+    // Already counted, but you picked a different place for it this time: take it off the
+    // old budget's total first, so it moves instead of being counted twice.
+    if(t.fill&&t.dest!==S.merchantMap[t.name]){
+      const old=S.recurring.find(x=>x.id===S.merchantMap[t.name]),k=t.date.slice(0,7);
+      if(old&&discEarlier(old,k)+0.004>=t.amount){const v=Math.round(((Number(old.spent[k])||0)-t.amount)*100)/100;if(v>0)old.spent[k]=v;else delete old.spent[k];}
+    }
     if(it)logPurchase(it,t.date,t.name,t.amount,t.cat);
     else S.oneoff.push({id:uid(),name:t.name,amount:t.amount,date:t.date,on:true,src:'chase'});
     S.merchantMap[t.name]=it?it.id:'oneoff';
@@ -1965,7 +1998,7 @@ document.getElementById('stmtFile').onchange=e=>{
 // and the listeners below carry it out. Only the functions named in ACTIONS can be called,
 // and only with plain values: quoted text, numbers, true/false, this.value, this.checked or
 // event. Anything else is ignored, so text that slips into the page cannot run as code.
-const ACTIONS=['addItem','adjModeChanged','cancelEdit','ccbAdd','ccbBalInput','ccbDel','ccbInput','ccbMonthInput','closeModal','commitEdit','confirmImport','del','delBill','discAdd','discDel','discSave','doExport','hideBanner','impClose','impCommit','impDest','impSet','impToggle','logWhat','openLog','projHover','projHoverOut','projMove','restorePrev','saveLog','selectMonth','setChargeCard','setChecking','setEditType','setPayoffStrategy','setView','startEdit','toggleAdd','toggleDone','toggleOn'];
+const ACTIONS=['addItem','adjModeChanged','cancelEdit','ccbAdd','ccbBalInput','ccbDel','ccbInput','ccbMonthInput','closeModal','commitEdit','confirmImport','del','delBill','discAdd','discClearEarlier','discDel','discSave','doExport','hideBanner','impClose','impCommit','impDest','impSet','impToggle','logWhat','openLog','projHover','projHoverOut','projMove','restorePrev','saveLog','selectMonth','setChargeCard','setChecking','setEditType','setPayoffStrategy','setView','startEdit','toggleAdd','toggleDone','toggleOn'];
 // The Bills edit form: the "moved to day" box is only usable when "Moved to day" is chosen.
 function adjModeChanged(v){document.getElementById('ed_adjday').disabled=v!=='move';}
 window.adjModeChanged=adjModeChanged;

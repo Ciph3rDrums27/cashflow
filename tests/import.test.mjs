@@ -9,7 +9,7 @@ import vm from 'node:vm';
 function loadApp() {
   let js = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   js = js.replace(/\nload\(\);\s*$/, '\n'); // don't boot the UI
-  js += `\nglobalThis.app={parseChaseCSV,logPurchase,discChange,discEarlier,discRows,runningBalance,upcomingBills,calItems,curIdx,ymKey,todayNum,todayISO,
+  js += `\nglobalThis.app={parseChaseCSV,impCommit(){window.impCommit();},setIMP(v){IMP=v;},logPurchase,discChange,discEarlier,discRows,runningBalance,upcomingBills,calItems,curIdx,ymKey,todayNum,todayISO,
     use(d){S=normalize(JSON.parse(JSON.stringify(d)));selIdx=curIdx();return S;},get S(){return S}};`;
   const el = () => ({ classList: { toggle() {}, add() {}, remove() {} }, style: {}, dataset: {}, value: '', firstChild: {}, addEventListener() {} });
   const ctx = {
@@ -104,4 +104,31 @@ test('editing the Discretionary list keeps the month total in step, including sp
   assert.equal(d.spent['2026-11'], 100);
   assert.equal(a.discRows(d, '2026-11').length, 0);
   assert.ok(id);
+});
+
+test('importing the same file again turns an earlier lump into itemized rows, without counting it twice', () => {
+  const a = loadApp();
+  // Before purchases were kept: two purchases were imported to Discretionary, leaving only a total.
+  const S = a.use({ ...budgets(), recurring: [{ id: 'd', name: 'Discretionary', amount: 300, day: null, variable: true, spent: { '2026-11': 75 } }],
+    merchantMap: { 'Wing Place': 'd', 'Movie Night': 'd' },
+    imported: { '2026-11-03|40.00|Wing Place': '2026-11-05', '2026-11-04|35.00|Movie Night': '2026-11-05' } });
+  const r = a.parseChaseCSV(`${HEAD}
+DEBIT,11/03/2026,Wing Place,-40.00,DEBIT_CARD,,,
+DEBIT,11/04/2026,Movie Night,-35.00,DEBIT_CARD,,,
+DEBIT,11/05/2026,New Place,-10.00,DEBIT_CARD,,,`);
+  const by = Object.fromEntries(r.txns.map(t => [t.name, t]));
+  assert.ok(by['Wing Place'].fill && by['Wing Place'].sel);
+  assert.ok(by['Movie Night'].fill && by['Movie Night'].sel);
+  assert.ok(!by['New Place'].fill);
+  by['New Place'].sel = false;
+  a.setIMP(r);
+  try { a.impCommit(); } catch (e) { /* drawing the page is not available in tests */ }
+  const d = S.recurring[0];
+  assert.equal(d.spent['2026-11'], 75, 'total unchanged');
+  assert.equal(a.discRows(d, '2026-11').map(x => x.name).sort().join(', '), 'Movie Night, Wing Place');
+  assert.equal(a.discEarlier(d, '2026-11'), 0, 'nothing left without detail');
+  // A third import finds nothing more to add.
+  const again = a.parseChaseCSV(`${HEAD}
+DEBIT,11/03/2026,Wing Place,-40.00,DEBIT_CARD,,,`);
+  assert.ok(!again.txns[0].fill && !again.txns[0].sel);
 });
