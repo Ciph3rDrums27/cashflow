@@ -14,7 +14,7 @@ const appJs = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 function loadApp() {
   let js = appJs;
   js = js.replace(/\nload\(\);\s*$/, '\n'); // don't boot the UI
-  js += `\nglobalThis.app={esc,normalize,curIdx,ymKey,SECTKEYS,sectionHTML,guessDest,runAction,ACTIONS,window,
+  js += `\nglobalThis.app={esc,normalize,curIdx,ymKey,SECTKEYS,sectionHTML,guessDest,runAction,ACTIONS,window,homeHTML(){const h={innerHTML:''};const g=document.getElementById;document.getElementById=id=>id==='home'?h:g(id);try{renderHome();}finally{document.getElementById=g;}return h.innerHTML;},
     use(d){S=normalize(JSON.parse(JSON.stringify(d)));selIdx=curIdx();return S;},
     edit(sect,id){editing={sect,id};},showAll(){SECTKEYS.forEach(k=>{doneOpen[k]=true;addOpen[k]=true;});},get S(){return S}};`;
   const el = () => ({ classList: { toggle() {}, add() {}, remove() {} }, style: {}, dataset: {}, value: '', firstChild: {}, addEventListener() {} });
@@ -51,6 +51,7 @@ test('a hostile backup cannot inject HTML into any list, row or edit form', () =
     recurring: [
       { id: 'r1', name: EVIL, amount: EVIL, day: EVIL, variable: true, months: { [k]: EVIL }, spent: { [k]: EVIL }, amountFrom: { [k]: EVIL }, monthAdj: { [k]: { day: EVIL } }, start: EVIL, end: EVIL },
       { id: 'r2', name: 'x', amount: 30, day: 5, variable: true, months: { [k]: EVIL }, monthAdj: { [k]: { day: EVIL } } },
+      { id: 'r3', name: 'Discretionary', amount: 30, day: null, variable: true, spent: { [k]: 5 }, logged: { [k]: [{ date: EVIL, name: EVIL, amount: EVIL, cat: EVIL }] } },
     ],
     oneoff: [{ id: 'o1', name: EVIL, amount: EVIL, date: EVIL }, { id: 'o2', name: 'x', amount: EVIL, date: k + '-20' }],
     card: [{ id: 'k1', name: EVIL, amount: EVIL, date: EVIL, left: EVIL, kind: EVIL }, { id: 'k2', name: 'x', amount: EVIL, date: k + '-03', left: '', kind: 'recur' }],
@@ -66,6 +67,17 @@ test('a hostile backup cannot inject HTML into any list, row or edit form', () =
     check(`${sect} list`, a.sectionHTML(sect));
     for (const it of S[sect]) { a.edit(sect, it.id); check(`${sect} edit form`, a.sectionHTML(sect)); }
   }
+});
+
+test('a hostile backup cannot inject HTML through the discretionary breakdown on Home', () => {
+  const a = loadApp();
+  const k = a.ymKey(a.curIdx());
+  a.use({ recurring: [{ id: 'd1', name: 'Discretionary ' + EVIL, amount: 100, day: null, variable: true, spent: { [k]: 9 },
+    logged: { [k]: [{ date: EVIL, name: EVIL, amount: EVIL, cat: EVIL }, { date: k + '-02', name: 'ok', amount: 4 }] } }] });
+  const out = a.homeHTML();
+  assert.ok(out.includes('ok'), 'breakdown rendered');
+  assert.ok(!out.includes('<xss-probe'), 'injected tag in output');
+  assert.ok(!out.includes('data-probe="') && !out.includes("data-probe='"), 'attribute break-out in output');
 });
 
 test('ids from a backup are replaced unless they are plain letters, digits, _ or -', () => {
