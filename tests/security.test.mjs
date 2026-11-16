@@ -14,9 +14,9 @@ const appJs = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 function loadApp() {
   let js = appJs;
   js = js.replace(/\nload\(\);\s*$/, '\n'); // don't boot the UI
-  js += `\nglobalThis.app={esc,normalize,curIdx,ymKey,SECTKEYS,sectionHTML,guessDest,runAction,ACTIONS,window,homeHTML(){const h={innerHTML:''};const g=document.getElementById;document.getElementById=id=>id==='home'?h:g(id);try{renderHome();}finally{document.getElementById=g;}return h.innerHTML;},
+  js += `\nglobalThis.app={esc,normalize,curIdx,ymKey,SECTKEYS,sectionHTML,discSectionHTML,guessDest,runAction,ACTIONS,window,
     use(d){S=normalize(JSON.parse(JSON.stringify(d)));selIdx=curIdx();return S;},
-    edit(sect,id){editing={sect,id};},showAll(){SECTKEYS.forEach(k=>{doneOpen[k]=true;addOpen[k]=true;});},get S(){return S}};`;
+    edit(sect,id){editing={sect,id};},showAll(){SECTKEYS.forEach(k=>{doneOpen[k]=true;addOpen[k]=true;});addOpen.disc=true;},get S(){return S}};`;
   const el = () => ({ classList: { toggle() {}, add() {}, remove() {} }, style: {}, dataset: {}, value: '', firstChild: {}, addEventListener() {} });
   const ctx = {
     console, setTimeout, clearTimeout, Promise, Date, Math, JSON, Number, String, Object, Array, Set, Map, URLSearchParams, RegExp,
@@ -69,15 +69,21 @@ test('a hostile backup cannot inject HTML into any list, row or edit form', () =
   }
 });
 
-test('a hostile backup cannot inject HTML through the discretionary breakdown on Home', () => {
+test('a hostile backup cannot inject HTML through the Discretionary section, in list or edit mode', () => {
   const a = loadApp();
   const k = a.ymKey(a.curIdx());
-  a.use({ recurring: [{ id: 'd1', name: 'Discretionary ' + EVIL, amount: 100, day: null, variable: true, spent: { [k]: 9 },
-    logged: { [k]: [{ date: EVIL, name: EVIL, amount: EVIL, cat: EVIL }, { date: k + '-02', name: 'ok', amount: 4 }] } }] });
-  const out = a.homeHTML();
-  assert.ok(out.includes('ok'), 'breakdown rendered');
-  assert.ok(!out.includes('<xss-probe'), 'injected tag in output');
-  assert.ok(!out.includes('data-probe="') && !out.includes("data-probe='"), 'attribute break-out in output');
+  const S = a.use({ recurring: [{ id: 'd1', name: 'Discretionary ' + EVIL, amount: EVIL, day: null, variable: true, spent: { [k]: EVIL },
+    logged: { [k]: [{ id: EVIL, date: EVIL, name: EVIL, amount: EVIL, cat: EVIL }, { date: k + '-02', name: 'ok', amount: 4 }] } }] });
+  const rows = S.recurring[0].logged[k];
+  assert.ok(rows.every(r => /^[A-Za-z0-9_-]{1,40}$/.test(r.id)), 'unsafe purchase id kept');
+  const check = (label, out) => {
+    assert.ok(out.includes('ok'), label + ': section rendered');
+    assert.ok(!out.includes('<xss-probe'), label + ': injected tag in output');
+    assert.ok(!out.includes('data-probe="') && !out.includes("data-probe='"), label + ': attribute break-out in output');
+  };
+  check('list', a.discSectionHTML());
+  for (const r of rows) { a.edit('disc', r.id); check('edit', a.discSectionHTML()); }
+  a.showAll(); check('add form', a.discSectionHTML());
 });
 
 test('ids from a backup are replaced unless they are plain letters, digits, _ or -', () => {

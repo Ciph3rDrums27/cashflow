@@ -9,7 +9,7 @@ import vm from 'node:vm';
 function loadApp() {
   let js = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   js = js.replace(/\nload\(\);\s*$/, '\n'); // don't boot the UI
-  js += `\nglobalThis.app={parseChaseCSV,logPurchase,runningBalance,upcomingBills,calItems,curIdx,ymKey,todayNum,todayISO,
+  js += `\nglobalThis.app={parseChaseCSV,logPurchase,discChange,discEarlier,discRows,runningBalance,upcomingBills,calItems,curIdx,ymKey,todayNum,todayISO,
     use(d){S=normalize(JSON.parse(JSON.stringify(d)));selIdx=curIdx();return S;},get S(){return S}};`;
   const el = () => ({ classList: { toggle() {}, add() {}, remove() {} }, style: {}, dataset: {}, value: '', firstChild: {}, addEventListener() {} });
   const ctx = {
@@ -71,7 +71,8 @@ test('each purchase logged to a budget is kept for the breakdown, and adds to th
   a.logPurchase(d, '2026-11-03', 'Wing Place', 40, 'Dining & drinks');
   a.logPurchase(d, '2026-11-04', 'Movie Night', 30.5);
   assert.equal(d.spent['2026-11'], 70.5);
-  assert.deepEqual(JSON.parse(JSON.stringify(d.logged['2026-11'])), [
+  assert.ok(d.logged['2026-11'].every(r => /^[A-Za-z0-9_-]+$/.test(r.id)), 'each purchase has an id');
+  assert.deepEqual(JSON.parse(JSON.stringify(d.logged['2026-11'].map(({ id, ...r }) => r))), [
     { date: '2026-11-03', name: 'Wing Place', amount: 40, cat: 'Dining & drinks' },
     { date: '2026-11-04', name: 'Movie Night', amount: 30.5 },
   ]);
@@ -87,4 +88,20 @@ test('purchases imported from the bank do not count again as bills due before pa
   assert.ok(!due.includes('Imported purchase'), 'imported purchase listed as due');
   assert.ok(due.includes('Typed one-time bill'));
   assert.equal(a.runningBalance(n + 3).at(n + 3), 930); // 1000 minus the typed bill only
+});
+
+test('editing the Discretionary list keeps the month total in step, including spending logged earlier', () => {
+  const a = loadApp();
+  const S = a.use({ ...budgets(), recurring: [{ id: 'd', name: 'Discretionary', amount: 300, day: null, variable: true, spent: { '2026-11': 100 } }] });
+  const d = S.recurring[0];
+  assert.equal(a.discEarlier(d, '2026-11'), 100);          // a total from before, no detail
+  a.logPurchase(d, '2026-11-03', 'Wing Place', 40);
+  assert.equal(d.spent['2026-11'], 140);
+  const id = a.discRows(d, '2026-11')[0].id;
+  a.discChange(d, '2026-11', rows => { rows[0].amount = 25; });  // edit
+  assert.equal(d.spent['2026-11'], 125);
+  a.discChange(d, '2026-11', rows => rows.splice(0, 1));         // delete
+  assert.equal(d.spent['2026-11'], 100);
+  assert.equal(a.discRows(d, '2026-11').length, 0);
+  assert.ok(id);
 });
