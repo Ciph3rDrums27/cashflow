@@ -31,7 +31,7 @@ Fragmented autopay dates across many creditors make the cumulative monthly outfl
 - **History-safe edits:** change a bill's amount from a given month on, set a last month, or skip or move one month's payment, without rewriting the past.
 - **Credit cards:** per-month balances and payments, due days on the calendar, payoff dates that follow your planned payments, payments that stop once a card is paid off.
 - **Bank statement import (Chase CSV):** send purchases to Groceries, Gas, etc. so they count toward that month instead of on top of the estimate. The app remembers each merchant and skips rows it has already imported. If the file has a Category column, it decides which budget each purchase goes to, and debt payments are left unticked so they aren't counted twice.
-- **Discretionary breakdown:** Home lists every purchase counted against your discretionary budget this month.
+- **Discretionary section:** the Bills tab lists every discretionary purchase for the month, one row each, with add, edit and delete. Changes update the discretionary budget on Home.
 - **Backups:** dated exports, a reminder when it's been a while, a preview before an import replaces anything, and one-click undo of the last import.
 - **Demo mode:** add `?demo=1` to the URL to show a made-up household for screenshots and live demos. Demo mode keeps everything in memory, never reads or writes your saved data, and its dates follow today so it always looks current.
 - **Works offline** once installed from the hosted site (Add to Home Screen on iPhone).

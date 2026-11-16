@@ -340,9 +340,15 @@ function normalize(s){
   s.recurring.forEach(it=>{
     if(!it.amountFrom||typeof it.amountFrom!=='object')it.amountFrom={};
     if(!it.spent||typeof it.spent!=='object')it.spent={};
-    // logged: the purchases behind each month's spent total, for the breakdown on Home.
-    // {'2026-11':[{date,name,amount,cat}]}. Older entries have a total but no detail.
+    // logged: the purchases behind each month's spent total, listed in the Discretionary
+    // section on the Bills tab. {'2026-11':[{id,date,name,amount,cat}]}. Spending logged
+    // before purchases were kept has a total but no detail.
     if(!it.logged||typeof it.logged!=='object'||Array.isArray(it.logged))it.logged={};
+    Object.keys(it.logged).forEach(k=>{
+      if(!/^\d{4}-\d{2}$/.test(k)||!Array.isArray(it.logged[k])){delete it.logged[k];return;}
+      it.logged[k]=it.logged[k].filter(r=>r&&typeof r==='object');
+      it.logged[k].forEach(r=>{if(!safeId(r.id))r.id=uid();r.amount=Number(r.amount)||0;r.name=String(r.name==null?'':r.name);r.date=/^\d{4}-\d{2}-\d{2}$/.test(String(r.date))?String(r.date):k+'-01';if(r.cat!=null)r.cat=String(r.cat);});
+    });
     if(it.end!=null&&!/^\d{4}-\d{2}$/.test(String(it.end)))delete it.end;
   });
   if(!s.checking||typeof s.checking!=='object')s.checking={};
@@ -810,26 +816,14 @@ function renderHome(){
     return `<div class="budrow"><span>${esc(it.name)}</span><span class="mono${over?' warnt':''}">${fmt0(sp)} of ${fmt0(b)}${over?' · over by '+fmt0(sp-b):''}</span></div><div class="budbar"><i class="${over?'over':''}" style="width:${Math.min(100,sp/b*100)}%"></i></div>`;
   }).join('');
   const budget=bud?`<div class="bud"><div class="hero-lab">${MONL[idxToYM(cur).m]} budget</div>${bud}<div class="budhint">Use + Log to count spending against a budget.</div></div>`:'';
-  // Discretionary breakdown: every purchase counted against that budget this month.
-  const disc=(S.recurring||[]).find(it=>it.on!==false&&it.variable&&it.day==null&&/discretion|dining|fun|entertain/i.test(it.name));
-  let discCol='';
-  if(disc){
-    const rows=(Array.isArray(disc.logged&&disc.logged[k])?disc.logged[k]:[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||(Number(b.amount)||0)-(Number(a.amount)||0));
-    const total=Number(disc.spent&&disc.spent[k])||0,listed=rows.reduce((t,r)=>t+(Number(r.amount)||0),0),b=amountAt(disc,cur);
-    const list=rows.map(r=>`<div class="discrow"><span class="d">${esc(fmtDate(String(r.date)))}</span><span class="n">${esc(r.name)}${r.cat?` <span class="c">${esc(r.cat)}</span>`:''}</span><span class="a mono">${fmt(r.amount)}</span></div>`).join('')
-      +(total-listed>0.004?`<div class="discrow"><span class="d"></span><span class="n c">Logged earlier, no detail</span><span class="a mono">${fmt(total-listed)}</span></div>`:'');
-    discCol=`<div class="hero-disc"><div class="hero-lab">${MONL[idxToYM(cur).m]} ${esc(disc.name.replace(/\s*\(.*\)\s*$/,''))}</div>
-      <div class="disctot mono${b&&total>b?' warnt':''}">${fmt(total)} <span>of ${fmt0(b)}</span></div>
-      ${list?`<div class="disclist">${list}</div>`:'<div class="empty">Nothing yet. Purchases you import or + Log to this budget show here.</div>'}</div>`;
-  }
   const noDue=(S.ccBalances||[]).reduce((t,c)=>t+(c.dueDay==null?cardCashPay(c,cur):0),0);
   if(rb&&noDue>0)notes.push(`<span class="warnt">Not counted:</span> ${fmt0(noDue)} in card payments with no due day. <button class="lnk" data-click="setView('cards')">Set due days</button>`);
   const age=backupAge();
   if(age==null||age>14)notes.push(`<span class="warnt">${age==null?'No backup yet.':'Last backup '+age+' days ago.'}</span> <button class="lnk" data-click="doExport()">Export now</button>`);
   const up=upcomingBills(tNow,tNow+14);
   const side=up.length?up.slice(0,7).map(i=>billRow(i,i.n===tNow?'Today':fmtDay(i.n))).join('')+(up.length>7?`<div class="note-block">+ ${up.length-7} more in the Calendar</div>`:''):'<div class="empty">Nothing due in the next 14 days.</div>';
-  el.innerHTML=`<div class="hero-grid${discCol?' three':''}"><div class="hero-main">${main}${budget}<div class="hero-notes">${notes.map(n=>`<div>${n}</div>`).join('')}</div></div>
-    ${discCol}<div class="hero-side"><div class="hero-lab">Due in the next 14 days</div>${side}</div></div>`;
+  el.innerHTML=`<div class="hero-grid"><div class="hero-main">${main}${budget}<div class="hero-notes">${notes.map(n=>`<div>${n}</div>`).join('')}</div></div>
+    <div class="hero-side"><div class="hero-lab">Due in the next 14 days</div>${side}</div></div>`;
 }
 
 // ========== CALENDAR TAB ==========
@@ -1149,7 +1143,78 @@ function renderDonut(){
 // Shows or hides the finished items in a list on the Bills tab.
 window.toggleDone=(sect)=>{doneOpen[sect]=!doneOpen[sect];renderSections();};
 // Draws all six lists on the Bills tab.
-function renderSections(){document.getElementById('sections').innerHTML=SECTKEYS.map(sectionHTML).join('');}
+function renderSections(){
+  // Discretionary sits after Recurring expenses.
+  document.getElementById('sections').innerHTML=SECTKEYS.map(k=>sectionHTML(k)+(k==='recurring'?discSectionHTML():'')).join('');
+}
+
+// ---------- Discretionary section ----------
+// Your discretionary budget (the everyday budget named Discretionary, Dining or Fun), shown
+// on the Bills tab one purchase per row for the month you are viewing. The purchases come
+// from a bank import or + Log, or are added here. Adding, editing or deleting a row updates
+// that month's total, which is what the Home budget bar and the month's cash out use.
+function discBill(){return (S.recurring||[]).find(it=>it.on!==false&&it.variable&&it.day==null&&/discretion|dining|fun|entertain/i.test(it.name));}
+function discRows(it,k){return Array.isArray(it.logged&&it.logged[k])?it.logged[k]:[];}
+// Spending in a month that was logged before purchases were kept: the total minus the rows.
+function discEarlier(it,k){const r=discRows(it,k).reduce((t,x)=>t+(Number(x.amount)||0),0);return Math.max(0,Math.round(((Number(it.spent[k])||0)-r)*100)/100);}
+// Changes a month's rows and keeps its total in step (rows plus anything logged earlier).
+function discChange(it,k,f){
+  const earlier=discEarlier(it,k);
+  if(!it.logged[k])it.logged[k]=[];
+  f(it.logged[k]);
+  if(!it.logged[k].length)delete it.logged[k];
+  const total=Math.round((earlier+discRows(it,k).reduce((t,x)=>t+(Number(x.amount)||0),0))*100)/100;
+  if(total>0)it.spent[k]=total;else delete it.spent[k];
+}
+function discSectionHTML(){
+  const it=discBill();if(!it)return '';
+  const k=ymKey(billVi(it,selIdx)),m=MON[idxToYM(selIdx).m],b=amountAt(it,selIdx),spent=Number(it.spent[k])||0,earlier=discEarlier(it,k);
+  const rows=discRows(it,k).slice().sort((x,y)=>String(y.date).localeCompare(String(x.date))||(Number(y.amount)||0)-(Number(x.amount)||0));
+  const row=r=>editing.sect==='disc'&&editing.id===r.id
+    ?`<tr><td class="editcell"><input id="dc_name" value="${esc(r.name)}"></td><td class="editcell"><input id="ed_date" class="datein" type="text" autocapitalize="off" autocorrect="off" data-iso="${esc(r.date)}" value="${esc(dispDate(r.date))}" placeholder="7/23"></td><td class="editcell"><input id="dc_cat" value="${esc(r.cat||'')}" placeholder="Category"></td><td class="editcell"><input id="dc_amt" class="mono" type="number" value="${esc(r.amount)}"></td><td style="text-align:right;white-space:nowrap"><button class="icon-btn" data-click="discSave('${r.id}')">✓</button><button class="icon-btn" data-click="cancelEdit()">✕</button></td></tr>`
+    :`<tr><td><span class="nmtxt">${esc(r.name)}</span></td><td class="mono" style="color:var(--mute)">${esc(fmtDate(r.date))}</td><td style="color:var(--mute);font-size:12px">${esc(r.cat||'')}</td><td class="amt">${fmt(r.amount)}</td><td style="text-align:right;white-space:nowrap"><button class="icon-btn" data-click="startEdit('disc','${r.id}')">✎</button><button class="icon-btn" data-click="discDel('${r.id}')">🗑</button></td></tr>`;
+  const body=rows.map(row).join('')
+    +(earlier>0?`<tr><td><span class="nmtxt" style="color:var(--mute)">Logged earlier</span> <span class="tag">no detail</span></td><td class="mono" style="color:var(--mute)">—</td><td></td><td class="amt">${fmt(earlier)}</td><td></td></tr>`:'')
+    ||`<tr><td colspan="5" class="empty">No discretionary spending in ${m} yet. Import a bank statement, use + Log, or add a purchase here.</td></tr>`;
+  const add=addOpen.disc?`<div class="addrow" style="grid-template-columns:1.4fr .9fr .9fr .8fr auto"><input id="af_name" placeholder="e.g. Dinner out"><input id="af_date" class="datein" type="text" autocapitalize="off" autocorrect="off" placeholder="${esc(dispDate(todayISO()))}" title="date of the purchase"><input id="af_cat" placeholder="Category (optional)"><input id="af_amt" class="mono" type="number" placeholder="Amount"><button class="btn" data-click="discAdd()">Save</button></div>`:'';
+  return `<div class="section panel">
+    <div class="sechead"><div class="tt"><span class="pd" style="background:var(--oneoff)"></span>Discretionary</div><div class="sectot${b&&spent>b?' warnt':''}">${fmt(spent)} of ${fmt0(b)} · ${m}</div></div>
+    <table><thead><tr><th>Item</th><th>Date</th><th>Category</th><th class="amt">Amount</th><th style="width:60px"></th></tr></thead><tbody>${body}</tbody></table>
+    ${add}
+    <div style="margin-top:10px"><button class="btn" data-click="toggleAdd('disc')">${addOpen.disc?'Cancel':'+ Add purchase'}</button></div>
+  </div>`;
+}
+// Adds a purchase from the section's add form, in the month of its date.
+window.discAdd=()=>{
+  const it=discBill();if(!it)return;
+  const nameEl=document.getElementById('af_name'),amtEl=document.getElementById('af_amt');
+  const amt=Math.round(Number(amtEl.value)*100)/100;
+  if(!(amt>0)){amtEl.classList.add('invalid');amtEl.focus();return;}
+  const date=dateVal('af_date',selIdx)||todayISO(),cat=document.getElementById('af_cat').value.trim();
+  discChange(it,date.slice(0,7),rows=>rows.push(Object.assign({id:uid(),date,name:(nameEl.value.trim()||'Purchase').slice(0,80),amount:amt},cat?{cat:cat.slice(0,40)}:{})));
+  addOpen.disc=false;save();render();
+};
+// Saves an edited purchase. A new date in another month moves it to that month.
+window.discSave=id=>{
+  const it=discBill();if(!it)return;
+  const k=Object.keys(it.logged).find(m=>discRows(it,m).some(r=>r.id===id));if(!k)return;
+  const amtEl=document.getElementById('dc_amt'),amt=Math.round(Number(amtEl.value)*100)/100;
+  if(!(amt>0)){amtEl.classList.add('invalid');amtEl.focus();return;}
+  const old=discRows(it,k).find(r=>r.id===id),date=dateVal('ed_date',monthStartIdx(k))||old.date,cat=document.getElementById('dc_cat').value.trim();
+  const upd=Object.assign({id,date,name:(document.getElementById('dc_name').value.trim()||old.name).slice(0,80),amount:amt},cat?{cat:cat.slice(0,40)}:{});
+  const nk=date.slice(0,7);
+  if(nk===k)discChange(it,k,rows=>{rows[rows.findIndex(r=>r.id===id)]=upd;});
+  else{discChange(it,k,rows=>rows.splice(rows.findIndex(r=>r.id===id),1));discChange(it,nk,rows=>rows.push(upd));}
+  editing={sect:null,id:null};save();render();
+};
+// Deletes a purchase after asking, and takes it off that month's total.
+window.discDel=id=>{
+  const it=discBill();if(!it)return;
+  const k=Object.keys(it.logged).find(m=>discRows(it,m).some(r=>r.id===id));if(!k)return;
+  const r=discRows(it,k).find(x=>x.id===id);
+  if(!confirm(`Delete "${r.name}" (${fmt(r.amount)})? This takes it off your ${MONL[idxToYM(monthStartIdx(k)).m]} discretionary total.`))return;
+  discChange(it,k,rows=>rows.splice(rows.findIndex(x=>x.id===id),1));save();render();
+};
 
 // ========== CARDS TAB ==========
 // Draws one editable row per card (balance, APR, due day, payments) and the "new charges land
@@ -1789,7 +1854,7 @@ function logPurchase(it,date,name,amount,cat){
   it.spent[k]=Math.round(((Number(it.spent[k])||0)+amount)*100)/100;
   if(!it.logged)it.logged={};
   if(!Array.isArray(it.logged[k]))it.logged[k]=[];
-  const row={date,name:String(name||'Logged').slice(0,80),amount};if(cat)row.cat=String(cat).slice(0,40);
+  const row={id:uid(),date,name:String(name||'Logged').slice(0,80),amount};if(cat)row.cat=String(cat).slice(0,40);
   it.logged[k].push(row);
 }
 // Your everyday budgets: bills that vary and have no fixed day (Groceries, Gas).
@@ -1900,7 +1965,7 @@ document.getElementById('stmtFile').onchange=e=>{
 // and the listeners below carry it out. Only the functions named in ACTIONS can be called,
 // and only with plain values: quoted text, numbers, true/false, this.value, this.checked or
 // event. Anything else is ignored, so text that slips into the page cannot run as code.
-const ACTIONS=['addItem','adjModeChanged','cancelEdit','ccbAdd','ccbBalInput','ccbDel','ccbInput','ccbMonthInput','closeModal','commitEdit','confirmImport','del','delBill','doExport','hideBanner','impClose','impCommit','impDest','impSet','impToggle','logWhat','openLog','projHover','projHoverOut','projMove','restorePrev','saveLog','selectMonth','setChargeCard','setChecking','setEditType','setPayoffStrategy','setView','startEdit','toggleAdd','toggleDone','toggleOn'];
+const ACTIONS=['addItem','adjModeChanged','cancelEdit','ccbAdd','ccbBalInput','ccbDel','ccbInput','ccbMonthInput','closeModal','commitEdit','confirmImport','del','delBill','discAdd','discDel','discSave','doExport','hideBanner','impClose','impCommit','impDest','impSet','impToggle','logWhat','openLog','projHover','projHoverOut','projMove','restorePrev','saveLog','selectMonth','setChargeCard','setChecking','setEditType','setPayoffStrategy','setView','startEdit','toggleAdd','toggleDone','toggleOn'];
 // The Bills edit form: the "moved to day" box is only usable when "Moved to day" is chosen.
 function adjModeChanged(v){document.getElementById('ed_adjday').disabled=v!=='move';}
 window.adjModeChanged=adjModeChanged;
